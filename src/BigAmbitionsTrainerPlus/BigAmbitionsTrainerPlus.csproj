@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- netstandard2.0 is the compatibility target for Unity's Mono runtime.
+         The SDK we build with (net8) is irrelevant to what the game loads. -->
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <AssemblyName>BigAmbitionsTrainerPlus</AssemblyName>
+    <RootNamespace>BigAmbitionsTrainerPlus</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Version>0.1.0</Version>
+
+    <!-- The mod loader rejects a mod folder containing more than one DLL,
+         so nothing may be copied alongside our assembly. -->
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <DebugType>none</DebugType>
+    <EnableDefaultNoneItems>false</EnableDefaultNoneItems>
+  </PropertyGroup>
+
+  <!-- Override on the command line if the game lives elsewhere:
+       dotnet build -p:GameDir="D:\Games\Big Ambitions" -->
+  <PropertyGroup>
+    <GameDir Condition="'$(GameDir)' == ''">E:\SteamLibrary\steamapps\common\Big Ambitions</GameDir>
+    <ManagedDir>$(GameDir)\Big Ambitions_Data\Managed</ManagedDir>
+    <ModsLocalDir>$(LOCALAPPDATA)Low\Hovgaard Games\Big Ambitions\ModsLocal</ModsLocalDir>
+    <ModInstallDir>$(ModsLocalDir)\Trainer Plus</ModInstallDir>
+  </PropertyGroup>
+
+  <Target Name="CheckGameDir" BeforeTargets="BeforeBuild">
+    <Error Condition="!Exists('$(ManagedDir)')"
+           Text="Game assemblies not found at '$(ManagedDir)'. Pass -p:GameDir=&quot;path\to\Big Ambitions&quot;." />
+  </Target>
+
+  <ItemGroup>
+    <!-- Private=false: reference only, never copy to output. -->
+    <Reference Include="BigAmbitions.ModAPI"  HintPath="$(ManagedDir)\BigAmbitions.ModAPI.dll"  Private="false" />
+    <Reference Include="UnityEngine"          HintPath="$(ManagedDir)\UnityEngine.dll"          Private="false" />
+    <Reference Include="UnityEngine.CoreModule" HintPath="$(ManagedDir)\UnityEngine.CoreModule.dll" Private="false" />
+  </ItemGroup>
+
+  <!-- Deploy straight into ModsLocal so the game picks it up.
+       Disable with: dotnet build -p:DeployToGame=false -->
+  <Target Name="DeployToModsLocal" AfterTargets="Build"
+          Condition="'$(DeployToGame)' != 'false' AND Exists('$(ModsLocalDir)')">
+    <MakeDir Directories="$(ModInstallDir)" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ModInstallDir)" />
+    <Message Importance="high" Text="Deployed $(TargetFileName) -> $(ModInstallDir)" />
+  </Target>
+
+</Project>
