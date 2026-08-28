@@ -1,9 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <!-- netstandard2.0 is the compatibility target for Unity's Mono runtime.
+    <!-- net472 matches Unity's ".NET Framework" API compatibility level, which is what
+         this game ships. Do NOT use netstandard2.0: there is no netstandard.dll facade in
+         Big Ambitions_Data\Managed, so the Mono runtime cannot even read the assembly's
+         attributes and mod discovery dies with a FileNotFoundException for
+         'netstandard, Version=2.0.0.0'.
          The SDK we build with (net8) is irrelevant to what the game loads. -->
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFramework>net472</TargetFramework>
     <AssemblyName>BigAmbitionsTrainerPlus</AssemblyName>
     <RootNamespace>BigAmbitionsTrainerPlus</RootNamespace>
     <LangVersion>latest</LangVersion>
@@ -33,8 +37,19 @@
   </Target>
 
   <ItemGroup>
+    <!-- Supplies net472 reference assemblies so no .NET Framework targeting pack
+         has to be installed. Build-time only; nothing ships. -->
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Private=false: reference only, never copy to output. -->
     <Reference Include="BigAmbitions.ModAPI"  HintPath="$(ManagedDir)\BigAmbitions.ModAPI.dll"  Private="false" />
+    <!-- SaveGameManager / GameInstance live here, in the global namespace. -->
+    <Reference Include="BigAmbitions"         HintPath="$(ManagedDir)\BigAmbitions.dll"         Private="false" />
     <Reference Include="UnityEngine"          HintPath="$(ManagedDir)\UnityEngine.dll"          Private="false" />
     <Reference Include="UnityEngine.CoreModule" HintPath="$(ManagedDir)\UnityEngine.CoreModule.dll" Private="false" />
   </ItemGroup>

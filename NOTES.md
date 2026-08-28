@@ -9,7 +9,7 @@ Confirmed findings from decompilation. **Nothing here is guessed — all of it c
 |---|---|
 | Game path | `E:\SteamLibrary\steamapps\common\Big Ambitions\` |
 | Managed assemblies | `<game>\Big Ambitions_Data\Managed\` (229 files, 177 DLLs) |
-| Game version | EA 0.11 (save folder `SaveGames\EA 0.11`) |
+| Game version | EA 0.11, **Build 3669** (from `Player.log`: `Loaded Big Ambitions (Build 3669)`) |
 | Unity runtime | **Mono** — `MonoBleedingEdge\` present, **no `GameAssembly.dll`** |
 | persistentDataPath | `C:\Users\<user>\AppData\LocalLow\Hovgaard Games\Big Ambitions\` |
 | Local mods folder | `<persistentDataPath>\ModsLocal\` |
@@ -179,6 +179,69 @@ No dev cheat menu. **But `OnGuiDummy` is useful**: a public, shipped MonoBehavio
 runs an arbitrary `Action` inside Unity's `OnGUI`. If we ever need a custom overlay
 beyond the ModAPI options panel, that's a free IMGUI hook.
 
+## Cheat targets — `GameInstance` (the save state)
+
+**`SaveGameManager.Current`** (static, in `BigAmbitions.dll`) returns a **`GameInstance`**.
+Both types are in the **global namespace** — no `using` needed, just reference
+`BigAmbitions.dll`.
+
+Every member is a **plain public mutable field**. No properties, no setters, no
+encapsulation, so a trainer just assigns to them. The game does this itself, e.g.
+`SaveGameManager.Current.Money += CompensationMoney;`. **No Harmony patching required
+for any of this.**
+
+```csharp
+public class GameInstance
+{
+    public int Day; public int Hour; public float Minute;
+    public float Money;
+    public float Energy; public float Hunger; public float Happiness;
+    public float EnergyGeneratedFromConsumables;
+    public float NetWorth;
+    public List<Loan> Loans;
+    public List<EmployeeInstance> EmployeeInstances;
+    public List<EmployeeInstance> CandidateEmployeeInstances;
+    public List<VehicleInstance> VehicleInstances;
+    public List<NeighbourhoodStats> NeighbourhoodStats;
+    public List<BuildingRegistration> BuildingRegistrations;
+    public List<Contact> Contacts;
+    public Queue<Transaction> Transactions;
+    public List<TaxDeductibleExpense> currentTaxPeriodDeductibleExpenses;
+    public float CurrentTaxPeriodGamblingWinnings;
+    public float CurrentTaxPeriodGamblingLosses;
+    public List<string> CompletedQuestEntries;
+    public string ActiveVehicleId;
+    public SerializableVector3 LastPlayerPosition;
+    // ...
+}
+```
+
+`SaveGameManager.Current` is **null outside an active save** — null-check every access.
+`SaveGameManager.CurrentDay` / `CurrentHour` are convenience statics that already do.
+
+### Stat ranges
+
+From `EnergySettings` (ScriptableObject):
+
+| Field | Value |
+|---|---|
+| `maxEnergyHungerHappinessValue` | `100f` |
+| `minEnergyHungerHappinessValue` | `0f` |
+| `hospitalizationEnergyThreshold` | `-20f` |
+| `maxDailyEnergyGeneratedFromConsumables` | `30f` |
+
+So Energy / Hunger / Happiness are normalised **0..100**. Note **higher Hunger is better**
+— `maxEnergyBurnIncreaseAtZeroHunger = 0.5f` means energy drains faster at *zero* hunger,
+so "full" is 100, not 0.
+
+### Per-frame tick
+
+`BAModAPI.Services.UnityLifecycleProvider` exposes static events **`OnUpdate`**,
+`OnFixedUpdate`, `OnLateUpdate`. Subscribe in `OnLoadAsync`, unsubscribe in
+`OnUnloadAsync`. This is how "keep X full" toggles enforce themselves without Harmony.
+
+`ServiceHelper.RunOnMainThreadAsync<T>` marshals onto the Unity main thread if ever needed.
+
 ## Feature gap vs the existing trainer
 
 Untouched by `com.thrasher.bigambitions.trainer`, all present as game assemblies:
@@ -195,10 +258,83 @@ Untouched by `com.thrasher.bigambitions.trainer`, all present as game assemblies
 
 **Not yet decompiled.** These are targets to investigate, not confirmed capabilities.
 
+## Verified working (Build 3669)
+
+Load path proven end to end with the no-op test mod:
+
+```
+[Mod:Trainer Plus] Trainer Plus loading. ModId='C:\...\ModsLocal\Trainer Plus' Root='C:/...\ModsLocal\Trainer Plus'
+[Mod:Trainer Plus] Trainer Plus loaded.
+[Mod:Trainer Plus] Test slider -> 63
+[Mod:Trainer Plus] Test toggle -> True
+```
+
+Confirmed behaviour:
+
+- **The options panel is in the in-game Options/Settings menu**, and it renders registered
+  mod options there. Reached while a city is loaded.
+- `ModId` for a local mod is the **full path of the mod folder**, as `GetModKey` implies.
+  Since `PlayerPrefs` keys are `m:{modId}:{optionId}`, **renaming or moving the mod folder
+  discards every saved option value.** Needs handling before release.
+- Slider `onValueChanged` fires continuously while dragging, not just on release. Anything
+  expensive in that callback must be debounced.
+- `[ModEntryOnCityLoad]` activates once a save is loaded — correct scope for a trainer.
+
+### Option labels are localization keys
+
+```
+Localization for key 'test toggle' not found on gameobject 'Label'
+```
+
+Labels are lowercased and looked up in the game's localization table; a miss falls back to
+displaying the raw string, so plain English labels *look* right but log a warning every
+time the panel builds. This is also what `SliderOption.ValueLabelKey` is for. Cosmetic,
+but fix before release rather than spamming users' logs.
+
+### Assemblies are cached for the session
+
+Mono cannot unload an assembly from the AppDomain. The `FileSystemWatcher` re-discovery on
+focus change will **not** pick up a rebuilt DLL if a previous version already loaded this
+session — it silently keeps the old one. **Fully quit and relaunch the game after every
+build.** A stale error in `Player.log` after a fix usually means this, not a failed fix.
+
+## Target framework: `net472`, NOT `netstandard2.0`
+
+Learned the hard way. **There is no `netstandard.dll` in `Big Ambitions_Data\Managed\`** —
+the game uses Unity's ".NET Framework" API compatibility level, not .NET Standard.
+
+A `netstandard2.0` build is rejected before any of our code runs. From `Player.log`:
+
+```
+[ModDiscovery] Failed to read registered mod classes from 'BigAmbitionsTrainerPlus.dll'.
+FileNotFoundException: Could not load file or assembly
+  'netstandard, Version=2.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'
+  at System.MonoCustomAttrs.GetCustomAttributesInternal(...)
+  at BigAmbitions.ModsInternal.ModDiscoveryRegistry+<GetRegisteredModTypes>d__45.MoveNext()
+```
+
+The loader calls `GetCustomAttributes<RegisterModClassAttribute>()` on our assembly to find
+the entry class. Resolving those attributes needs the `netstandard` facade, which isn't
+there, so discovery throws before reading a single type. A follow-on
+`TypeLoadException: VTable setup of type ... failed` appears later from the in-game debug
+console scanning the same broken assembly — that one is a symptom, not a separate bug.
+
+Fix: `<TargetFramework>net472</TargetFramework>` plus the
+`Microsoft.NETFramework.ReferenceAssemblies` package (build-time only, `PrivateAssets=all`)
+so no .NET Framework targeting pack needs installing. The output then binds straight to
+`mscorlib`, which the game does have.
+
+Verify after any csproj change — the emitted assembly must reference `mscorlib`, never
+`netstandard`:
+
+```bash
+tr -c '[:print:]' '\n' < bin/Release/BigAmbitionsTrainerPlus.dll | grep -E '^(netstandard|mscorlib)' | sort -u
+```
+
 ## Rules for this project
 
 1. Never invent a class, field, or method name. Every target comes from decompiler output.
 2. Native ModAPI only. No BepInEx, no Harmony, no IL2CPP anything.
-3. `netstandard2.0` target — the SDK version we build with is irrelevant to the runtime.
+3. `net472` target — see above. The SDK version we build with is irrelevant to the runtime.
 4. Exactly one DLL ships in the mod folder. The loader rejects more than one.
 5. All game assembly references must be `Private="false"` so they don't get copied.
