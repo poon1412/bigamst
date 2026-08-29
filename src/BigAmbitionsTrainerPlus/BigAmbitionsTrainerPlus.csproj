@@ -11,7 +11,7 @@
     <AssemblyName>BigAmbitionsTrainerPlus</AssemblyName>
     <RootNamespace>BigAmbitionsTrainerPlus</RootNamespace>
     <LangVersion>latest</LangVersion>
-    <Version>0.1.0</Version>
+    <Version>0.9.0</Version>
 
     <!-- The mod loader rejects a mod folder containing more than one DLL,
          so nothing may be copied alongside our assembly. -->
@@ -58,6 +58,8 @@
     <Reference Include="BigAmbitions.Characters" HintPath="$(ManagedDir)\BigAmbitions.Characters.dll" Private="false" />
     <!-- Timestamp, reached through VehicleInstance.parkingTickets and lastSeen. -->
     <Reference Include="DayNightCycle"        HintPath="$(ManagedDir)\DayNightCycle.dll"        Private="false" />
+    <!-- InstanceBehavior<T>, how the game exposes its singletons. -->
+    <Reference Include="HGExtensions"         HintPath="$(ManagedDir)\HGExtensions.dll"        Private="false" />
     <!-- TaggedScriptableObject, the base type of VehicleType. -->
     <Reference Include="HGPlugins"            HintPath="$(ManagedDir)\HGPlugins.dll"            Private="false" />
     <!-- ModOptionsButtonControl, for relabelling the game's placeholder button text. -->

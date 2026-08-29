@@ -88,6 +88,13 @@ namespace BigAmbitionsTrainerPlus
             1_000f, 10_000f, 100_000f, Million, 10f * Million, 100f * Million
         };
 
+        /// <summary>
+        /// Last value logged per setting. The options panel re-invokes every callback
+        /// on each rebuild, so without this simply opening Options would spam the log.
+        /// </summary>
+        private static readonly System.Collections.Generic.Dictionary<string, object> LastApplied =
+            new System.Collections.Generic.Dictionary<string, object>();
+
         private static IModLogger _log;
 
         private bool _keepEnergy;
@@ -96,6 +103,7 @@ namespace BigAmbitionsTrainerPlus
         private bool _keepStaffSatisfied;
         private bool _autoRestock;
         private bool _autoClean;
+        private bool _freeRent;
 
         /// <summary>Money is topped back up to this whenever it drops below. 0 disables.</summary>
         private float _moneyFloor;
@@ -116,6 +124,7 @@ namespace BigAmbitionsTrainerPlus
         {
             _log = context.Logger;
             BusinessCheats.Initialize(_log);
+            TeleportCheats.Initialize(_log);
 
             var options = new ModOptions()
 
@@ -124,54 +133,61 @@ namespace BigAmbitionsTrainerPlus
                 .AddButton("Add the amount above  →", () => AddMoney(_selectedMoneyAmount))
                 .AddButton("Subtract the amount above  →", () => AddMoney(-_selectedMoneyAmount))
                 .AddSlider(OptMoneyFloor, "Never drop below", 0, 100, 0,
-                    value => _moneyFloor = value * Million, LabelDollarsM)
+                    value => { _moneyFloor = value * Million; LogSetting("Money floor ($M)", value); }, LabelDollarsM)
                 .AddButton("Pay off all loans  →", ClearLoans)
                 .AddSplitter()
 
                 .AddHeader("Trainer Plus — Economy")
                 .AddSlider(OptTaxPercent, "Tax rate", 0, 50, 10,
-                    value => WithVariables(v => v.taxPercentage = value), LabelPercent)
+                    value => WithVariables("Tax rate", value, v => v.taxPercentage = value), LabelPercent)
                 .AddSlider(OptSalaryMult, "Employee wages", 0, 200, 100,
-                    value => WithVariables(v => v.employeeHourlySalaryMultiplier = value / 100f), LabelPercent)
+                    value => WithVariables("Employee wages", value, v => v.employeeHourlySalaryMultiplier = value / 100f), LabelPercent)
                 .AddSlider(OptMarketMult, "Market prices", 0, 300, 100,
-                    value => WithVariables(v => v.marketPriceMultiplier = value / 100f), LabelPercent)
+                    value => WithVariables("Market prices", value, v => v.marketPriceMultiplier = value / 100f), LabelPercent)
                 .AddSlider(OptInterestMult, "Bank interest", 0, 200, 100,
-                    value => WithVariables(v => v.bankInterestMultiplier = value / 100f), LabelPercent)
+                    value => WithVariables("Bank interest", value, v => v.bankInterestMultiplier = value / 100f), LabelPercent)
                 .AddSlider(OptSellMult, "Selling return", 0, 300, 75,
-                    value => WithVariables(v => v.sellingMultiplier = value / 100f), LabelPercent)
+                    value => WithVariables("Selling return", value, v => v.sellingMultiplier = value / 100f), LabelPercent)
                 .AddToggle(OptNoTradeLimits, "No wholesale or import limits", false,
-                    value => WithVariables(v => v.disableWholesaleAndImportLimits = value))
+                    value => WithVariables("No trade limits", value, v => v.disableWholesaleAndImportLimits = value))
                 .AddToggle(OptAllImports, "All products available from importers", false,
-                    value => WithVariables(v => v.allProductsAvailableFromImporters = value))
+                    value => WithVariables("All importer products", value, v => v.allProductsAvailableFromImporters = value))
                 .AddToggle(OptAllContacts, "All contacts unlocked", false,
-                    value => WithVariables(v => v.allContactsUnlocked = value))
+                    value => WithVariables("All contacts", value, v => v.allContactsUnlocked = value))
                 .AddToggle(OptAllCourses, "All courses unlocked", false,
-                    value => WithVariables(v => v.allCoursesUnlocked = value))
+                    value => WithVariables("All courses", value, v => v.allCoursesUnlocked = value))
                 .AddSplitter()
 
                 .AddHeader("Trainer Plus — Player")
-                .AddToggle(OptKeepEnergy,    "Keep energy full",    false, v => _keepEnergy = v)
-                .AddToggle(OptKeepHunger,    "Keep hunger full",    false, v => _keepHunger = v)
-                .AddToggle(OptKeepHappiness, "Keep happiness full", false, v => _keepHappiness = v)
+                .AddToggle(OptKeepEnergy,    "Keep energy full",    false, v => { _keepEnergy = v; LogSetting("Keep energy full", v); })
+                .AddToggle(OptKeepHunger,    "Keep hunger full",    false, v => { _keepHunger = v; LogSetting("Keep hunger full", v); })
+                .AddToggle(OptKeepHappiness, "Keep happiness full", false, v => { _keepHappiness = v; LogSetting("Keep happiness full", v); })
                 .AddToggle(OptNoAging, "Disable aging", false,
-                    value => WithVariables(v => v.disableAging = value))
+                    value => WithVariables("Disable aging", value, v => v.disableAging = value))
                 .AddToggle(OptNoEnergyDrain, "Disable energy system entirely", false,
-                    value => WithVariables(v => v.disableEnergy = value))
+                    value => WithVariables("Disable energy system", value, v => v.disableEnergy = value))
                 .AddButton("Restore energy, hunger and happiness  →", RestoreAllStats)
                 .AddSplitter()
 
                 .AddHeader("Trainer Plus — Businesses")
                 .AddButton("Restock every shelf and fridge  →", () => BusinessCheats.RestockEverything())
-                .AddToggle(OptAutoRestock, "Keep everything restocked", false, v => _autoRestock = v)
+                .AddToggle(OptAutoRestock, "Keep everything restocked", false, v => { _autoRestock = v; LogSetting("Auto restock", v); })
                 .AddButton("Mark all stock as paid for  →", BusinessCheats.MarkStockPaid)
                 .AddButton("Remove all dirt  →", () => BusinessCheats.CleanEverything())
-                .AddToggle(OptAutoClean, "Keep everything spotless", false, v => _autoClean = v)
-                .AddToggle(OptFreeRent, "No rent on owned property", false, BusinessCheats.SetFreeRent)
+                .AddToggle(OptAutoClean, "Keep everything spotless", false, v => { _autoClean = v; LogSetting("Auto clean", v); })
+                .AddToggle(OptFreeRent, "No rent on owned property", false, value =>
+                {
+                    // The panel re-invokes this on every rebuild, so skip the
+                    // property walk unless the setting actually changed.
+                    if (_freeRent == value) { return; }
+                    _freeRent = value;
+                    BusinessCheats.SetFreeRent(value);
+                })
                 .AddSplitter()
 
                 .AddHeader("Trainer Plus — Employees")
                 .AddToggle(OptKeepStaffHappy, "Keep all employees fully satisfied", false,
-                    v => _keepStaffSatisfied = v)
+                    v => { _keepStaffSatisfied = v; LogSetting("Keep staff satisfied", v); })
                 .AddButton("Satisfy all employees now  →", SatisfyAllEmployees)
                 .AddButton("Clear absences and sick days  →", ClearAbsences)
                 .AddButton("Max out every employee skill  →", BusinessCheats.MaxEmployeeSkills)
@@ -179,17 +195,23 @@ namespace BigAmbitionsTrainerPlus
 
                 .AddHeader("Trainer Plus — Vehicles")
                 .AddToggle(OptNoVehicleDamage, "Disable vehicle damage", false,
-                    value => WithVariables(v => v.disableVehicleDamage = value))
+                    value => WithVariables("Disable vehicle damage", value, v => v.disableVehicleDamage = value))
                 .AddToggle(OptNoVehicleFuel, "Disable fuel consumption", false,
-                    value => WithVariables(v => v.disableVehicleFuel = value))
+                    value => WithVariables("Disable fuel use", value, v => v.disableVehicleFuel = value))
                 .AddButton("Repair, refuel and clean all  →", ServiceAllVehicles)
                 .AddButton("Clear parking tickets and fines  →", ClearParkingFines)
                 .AddSplitter()
 
                 .AddHeader("Trainer Plus — Rivals")
                 .AddSlider(OptRivalDifficulty, "Rival difficulty", 0, 200, 100,
-                    value => WithVariables(v => v.rivalsDifficultyMultiplier = value / 100f), LabelPercent)
+                    value => WithVariables("Rival difficulty", value, v => v.rivalsDifficultyMultiplier = value / 100f), LabelPercent)
                 .AddButton("Defeat all rivals  →", DefeatAllRivals)
+                .AddSplitter()
+
+                .AddHeader("Trainer Plus — Teleport")
+                .AddButton("Go to map destination  →", TeleportCheats.ToDestination)
+                .AddButton("Go inside map destination  →", TeleportCheats.InsideDestination)
+                .AddButton("Go to quest target  →", TeleportCheats.ToQuestTarget)
                 .AddSplitter()
 
                 .AddHeader("Trainer Plus — Time")
@@ -197,7 +219,7 @@ namespace BigAmbitionsTrainerPlus
                 // The slider only records the target. Applying it directly would move the
                 // clock every time the panel is built, because ModOptionsSliderControl
                 // re-invokes OnValueChanged during Initialize.
-                .AddSlider(OptSetHour, "Target hour", 0, 23, 8, value => _targetHour = value, LabelHour)
+                .AddSlider(OptSetHour, "Target hour", 0, 23, 8, value => { _targetHour = value; LogSetting("Target hour", value); }, LabelHour)
                 .AddButton("Jump to the target hour  →", JumpToTargetHour)
 
                 // Renders nothing. Must stay last: its SpawnUi is the signal that the
@@ -223,6 +245,8 @@ namespace BigAmbitionsTrainerPlus
 
             _log?.Info("Trainer Plus unloading.");
             BusinessCheats.Reset();
+            TeleportCheats.Reset();
+            LastApplied.Clear();
             ButtonLabelFixer.Reset();
             _log = null;
             return Task.CompletedTask;
@@ -307,8 +331,12 @@ namespace BigAmbitionsTrainerPlus
         /// <summary>
         /// Applies a change to the save's GameVariables, the game's own sandbox config.
         /// Null outside an active save, so every caller funnels through here.
+        ///
+        /// The options panel re-invokes every callback whenever it is rebuilt, so this
+        /// logs only when a value actually changes — otherwise simply opening Options
+        /// would write a dozen lines.
         /// </summary>
-        private static void WithVariables(System.Action<GameVariables> apply)
+        private static void WithVariables(string name, object value, System.Action<GameVariables> apply)
         {
             GameVariables variables = SaveGameManager.Current?.gameVariables;
             if (variables == null)
@@ -317,6 +345,25 @@ namespace BigAmbitionsTrainerPlus
             }
 
             apply(variables);
+
+            if (!LastApplied.TryGetValue(name, out object previous) || !Equals(previous, value))
+            {
+                LastApplied[name] = value;
+                _log?.Info($"{name} = {value}");
+            }
+        }
+
+        /// <summary>
+        /// Records a state toggle that is enforced by this mod rather than by
+        /// GameVariables, so flipping it leaves a trace in the log.
+        /// </summary>
+        private static void LogSetting(string name, object value)
+        {
+            if (!LastApplied.TryGetValue(name, out object previous) || !Equals(previous, value))
+            {
+                LastApplied[name] = value;
+                _log?.Info($"{name} = {value}");
+            }
         }
 
         private void OnMoneyAmountChanged(int index)
@@ -539,25 +586,53 @@ namespace BigAmbitionsTrainerPlus
         private static void DefeatAllRivals()
         {
             GameInstance game = SaveGameManager.Current;
-            if (game?.specialRivalStates == null)
+            if (game == null)
             {
+                _log?.Warn("Defeat rivals ignored: no save is loaded.");
                 return;
             }
 
-            int changed = 0;
-            foreach (SpecialRivalState rival in game.specialRivalStates)
+            // Setting isDefeated by hand is not enough: the rival keeps trading and
+            // attacking. RivalsHelper.DefeatRival also runs OnRivalDefeat, which shuts
+            // down their businesses, sells their real estate, stops special-rival attacks
+            // and clears what they own. Let the game do its own bookkeeping.
+            int defeated = 0;
+            int failed = 0;
+
+            foreach (RivalData rival in RivalsHelper.GetAllRivalData())
             {
-                if (rival.isDefeated)
+                if (rival == null)
                 {
                     continue;
                 }
 
-                rival.isDefeated = true;
-                rival.isActive = false;
-                changed++;
+                try
+                {
+                    RivalsHelper.DefeatRival(rival);
+                    defeated++;
+                }
+                catch (System.Exception exception)
+                {
+                    // One rival in a bad state must not abort the rest.
+                    failed++;
+                    _log?.Warn($"Could not defeat rival '{rival.id}': {exception.Message}");
+                }
             }
 
-            _log?.Info($"Defeated {changed} rival(s).");
+            int stillActive = 0;
+            if (game.specialRivalStates != null)
+            {
+                foreach (SpecialRivalState state in game.specialRivalStates)
+                {
+                    if (state != null && state.isActive && !state.isDefeated)
+                    {
+                        stillActive++;
+                    }
+                }
+            }
+
+            _log?.Info($"Processed {defeated} rival(s), {failed} failed. " +
+                       $"Special rivals still active: {stillActive}.");
         }
     }
 }

@@ -74,7 +74,14 @@ Disable damage and fuel use; repair, refuel and clean everything you own; clear 
 tickets and fines.
 
 ### Rivals
-Adjust rival difficulty, or defeat all rivals outright.
+Adjust rival difficulty, or defeat all rivals outright — which shuts down their businesses
+and sells off their real estate, not just marks them beaten.
+
+### Teleport
+Jump to the destination you marked on the city map, go straight inside it, or travel to your
+current quest target. **If you are driving, your car comes with you** — it lands at the
+building's entrance, or its drive-in entrance where one exists, with its physics reset
+properly.
 
 ### Time
 Freeze the clock, or jump to a chosen hour. Jumping to an earlier hour moves you to the next
@@ -82,14 +89,19 @@ day rather than rewinding the current one.
 
 ## Known issues
 
+This is a **0.9 beta**. Everything below has been exercised on a real save, but only by one
+person on one machine — please report anything odd.
+
 - **Buttons in the mod menu are captioned "Apply".** The game's mod UI never sets a caption
   on mod buttons, leaving a placeholder ("YOUR TEXT HERE") — this mod overwrites it. The row
   label to the left says what each button does.
-- **Employee features are untested.** They are written against the game's current data and
-  compile cleanly, but had not been exercised on a save with hired staff at release time.
-  Please report anything odd.
+- **"Defeat all rivals" has not been tested against active rivals.** It calls the game's own
+  `RivalsHelper.DefeatRival`, which shuts down their businesses and sells their real estate,
+  but no save with live rivals has run it yet.
 - **Freeze the clock is experimental.** Stopping time is the most invasive thing here and may
   interact badly with deliveries, shifts or rent. Try it on a save you do not mind losing.
+- **Teleporting while driving** moves the car with you and resets its physics. It lands at
+  the building's entrance, or its drive-in entrance where one exists.
 
 ## Building
 
@@ -120,3 +132,9 @@ decompiler output rather than guesswork. Worth reading before changing anything.
 
 Copy `Locales/en.json` to `Locales/<locale>.json` and translate the values, leaving the keys
 and any `{value}` placeholders alone. The game loads it automatically.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
+
+This mod is not affiliated with Hovgaard Games. Big Ambitions is their trademark.
