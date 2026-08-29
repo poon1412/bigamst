@@ -71,11 +71,19 @@
 
   <!-- Deploy straight into ModsLocal so the game picks it up.
        Disable with: dotnet build -p:DeployToGame=false -->
+  <ItemGroup>
+    <!-- The loader registers <modFolder>\Locales and merges <locale>.json from it, so our
+         option labels resolve instead of logging a missing-key warning on every rebuild.
+         Only the mod root is checked for the single-DLL rule, so subfolders are fine. -->
+    <LocaleFiles Include="Locales\*.json" />
+  </ItemGroup>
+
   <Target Name="DeployToModsLocal" AfterTargets="Build"
           Condition="'$(DeployToGame)' != 'false' AND Exists('$(ModsLocalDir)')">
     <MakeDir Directories="$(ModInstallDir)" />
     <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ModInstallDir)" />
-    <Message Importance="high" Text="Deployed $(TargetFileName) -> $(ModInstallDir)" />
+    <Copy SourceFiles="@(LocaleFiles)" DestinationFolder="$(ModInstallDir)\Locales" />
+    <Message Importance="high" Text="Deployed $(TargetFileName) + @(LocaleFiles->Count()) locale file(s) -> $(ModInstallDir)" />
   </Target>
 
 </Project>

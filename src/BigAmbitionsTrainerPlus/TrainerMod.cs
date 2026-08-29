@@ -62,9 +62,6 @@ namespace BigAmbitionsTrainerPlus
         /// </summary>
         private const float StaffSweepIntervalSeconds = 1f;
 
-        /// <summary>How often to look for freshly spawned option buttons to relabel.</summary>
-        private const float UiSweepIntervalSeconds = 0.5f;
-
         /// <summary>
         /// Restock and cleaning walk every container in every owned property, which is
         /// far heavier than the employee pass, so they run much less often.
@@ -113,7 +110,6 @@ namespace BigAmbitionsTrainerPlus
 
         private float _staffSweepTimer;
         private float _businessSweepTimer;
-        private float _uiSweepTimer;
         private bool _tickSubscribed;
 
         public override Task OnLoadAsync(ModContext context)
@@ -202,7 +198,11 @@ namespace BigAmbitionsTrainerPlus
                 // clock every time the panel is built, because ModOptionsSliderControl
                 // re-invokes OnValueChanged during Initialize.
                 .AddSlider(OptSetHour, "Target hour", 0, 23, 8, value => _targetHour = value, LabelHour)
-                .AddButton("Jump to the target hour  →", JumpToTargetHour);
+                .AddButton("Jump to the target hour  →", JumpToTargetHour)
+
+                // Renders nothing. Must stay last: its SpawnUi is the signal that the
+                // panel finished rebuilding, and by then every button above exists.
+                .AddCustom(new ButtonLabelFixer.HookOption());
 
             OptionsService.Register(context.ModId, options);
 
@@ -223,6 +223,7 @@ namespace BigAmbitionsTrainerPlus
 
             _log?.Info("Trainer Plus unloading.");
             BusinessCheats.Reset();
+            ButtonLabelFixer.Reset();
             _log = null;
             return Task.CompletedTask;
         }
@@ -233,14 +234,8 @@ namespace BigAmbitionsTrainerPlus
         /// </summary>
         private void OnUpdate()
         {
-            // Cheap and throttled, and it has to run whether or not a save is loaded,
-            // since the options panel is reachable from the menus too.
-            _uiSweepTimer += Time.unscaledDeltaTime;
-            if (_uiSweepTimer >= UiSweepIntervalSeconds)
-            {
-                _uiSweepTimer = 0f;
-                ButtonLabelFixer.Sweep();
-            }
+            // Two field reads unless the options panel was rebuilt since the last frame.
+            ButtonLabelFixer.ProcessPendingRebuild();
 
             GameInstance game = SaveGameManager.Current;
             if (game == null)

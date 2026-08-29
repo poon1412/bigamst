@@ -457,6 +457,76 @@ The caption is driven by a `TextLocalizationComponent`
 (`Localizor.LanguageChangeEvent`, in `HGPlugins.dll`), which overwrites the text on its next
 refresh — set its `Key` and disable it as well as assigning `.text`.
 
+### Never poll the scene from the update tick
+
+`FindObjectsOfType` / `FindObjectOfType` walk the **entire scene graph**. Calling either on
+a timer from `UnityLifecycleProvider.OnUpdate` caused clearly noticeable stutter in the
+city — confirmed by removing the mod folder and comparing.
+
+Making the call cheaper is not the fix; the fix is not calling it. `ModOption.SpawnUi` is
+invoked during `ModOptionsViewController.Rebuild`, so a custom `ModOption` registered
+**last** in the list is a free notification that the panel was just built, at which point
+every button above it exists:
+
+```csharp
+internal sealed class HookOption : ModOption
+{
+    internal HookOption() : base(null, string.Empty) { }
+    public override void SpawnUi(Transform parent, string modId) => _pendingRoot = parent;
+}
+```
+
+The per-frame cost then drops to two field reads, and UI work is scoped to the panel's
+content root instead of the scene. Anything else needing "run when the options panel
+opens" should use the same trick.
+
+### Mods can ship localization — `<modFolder>\Locales\<locale>.json`
+
+`ModDiscoveryRegistry.SyncDiscoveredLocalizationPaths` registers `Path.Combine(ModFolder,
+"Locales")` for every discovered mod and hands it to
+`LocalizorManager.SyncExternalLocalizationPaths`, which loads `<locale>.json`
+(`Path.Combine(value, text + ".json")`) and merges it into the localization tables.
+
+This is the correct fix for missing-key warnings: **provide the keys** rather than
+suppressing warnings via `LocalizorManager.showNonCriticalWarnings`, which is global and
+would hide the game's own diagnostics. It also makes the mod translatable for free.
+
+Keys are matched **lowercased** (`GetLocalization` does `label.ToLower()`), so the JSON keys
+must be lowercase. The file is a flat `{"key": "value"}` object, and `{value}` placeholders
+must survive into the value for slider argument substitution.
+
+The single-DLL rule only inspects the mod root (`SearchOption.TopDirectoryOnly`), so a
+`Locales` subfolder is fine.
+
+**Getting the key list right:** don't transcribe labels by hand. Run once and harvest them
+from the log, which prints exactly what was looked up, already lowercased:
+
+```bash
+grep -ohE "Localization for key '[^']+' not found" Player.log \
+  | sed -E "s/Localization for key '([^']+)' not found/\1/" | sort -u
+```
+
+### Local mods cannot be disabled from the Mods screen
+
+`SubscribedModUI.UpdateConflicts`:
+
+```csharp
+bool flag = _modInfo.steamItemId != 0;                    // Workshop only
+modEnabledToggle.isOn = !flag || ModManifest.Contains(currentSteamItemId);
+modEnabledToggle.interactable = flag && !_hasConflicts;   // local mods: not interactable
+```
+
+Enable/disable state lives in `ModManifest`, a list of **ulong Workshop ids**. A local mod
+has no id, so the toggle is greyed out and always displays as on, and the version field
+reads `"main_menu_mods_local_mod"` instead of a version.
+
+**Uninstalling a local mod means deleting its folder.** Say so in user-facing docs, because
+the obvious in-game control looks broken otherwise. Publishing to Steam Workshop gives users
+a working toggle — a real argument for Workshop as the primary channel.
+
+Note also that detected mod conflicts (`ModEnumDefinitions.GetModConflictsList`) force the
+mod off and remove it from the manifest.
+
 ### Option labels are localization keys
 
 ```

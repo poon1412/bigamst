@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using BigAmbitions.Mods;
 using BigAmbitions.ModsInternal;
 using Localizor.LanguageChangeEvent;
 using TMPro;
@@ -13,12 +13,12 @@ namespace BigAmbitionsTrainerPlus
     ///
     /// ModOptionsButtonControl.Initialize assigns the ButtonOption's Label to the row
     /// label but never sets the button's own text, so every mod button in the game keeps
-    /// its prefab placeholder ("YOUR TEXT HERE"). Nothing passed through AddButton can
+    /// its prefab placeholder ("Your text here"). Nothing passed through AddButton can
     /// change that.
     ///
-    /// This sweeps the spawned controls and rewrites the button caption. It is purely
-    /// cosmetic and entirely best-effort: any failure leaves the placeholder in place
-    /// rather than breaking the panel.
+    /// This does no polling. <see cref="HookOption"/> is registered last in the options
+    /// list, so the game calls its SpawnUi at the end of every panel rebuild, which is
+    /// precisely when new buttons exist and the only time relabelling is needed.
     /// </summary>
     internal static class ButtonLabelFixer
     {
@@ -32,56 +32,63 @@ namespace BigAmbitionsTrainerPlus
         /// </summary>
         private const string Placeholder = "Your text here";
 
-        /// <summary>
-        /// Buttons already dealt with. The panel destroys and respawns its controls on
-        /// every rebuild, so this is keyed on the instance and pruned as entries die.
-        /// </summary>
-        private static readonly HashSet<int> Handled = new HashSet<int>();
+        /// <summary>Root the panel spawned our options into, captured on rebuild.</summary>
+        private static Transform _pendingRoot;
 
         private static bool _failed;
 
         /// <summary>
-        /// Rewrites any button caption still showing the placeholder. Safe to call
-        /// repeatedly; it does nothing once every visible button has been handled.
+        /// Add this to the end of the options list. The game calls SpawnUi on it during
+        /// ModOptionsViewController.Rebuild, giving a free notification that the panel
+        /// was just built — no scene scanning and no per-frame cost.
         /// </summary>
-        internal static void Sweep()
+        internal sealed class HookOption : ModOption
         {
-            if (_failed)
+            internal HookOption()
+                : base(null, string.Empty)
+            {
+            }
+
+            public override void SpawnUi(Transform parent, string modId)
+            {
+                // Deliberately renders nothing. It exists only for this callback.
+                _pendingRoot = parent;
+            }
+        }
+
+        internal static void Reset()
+        {
+            _pendingRoot = null;
+            _failed = false;
+        }
+
+        /// <summary>
+        /// Relabels buttons if the panel was rebuilt since the last call. Costs two field
+        /// reads when there is nothing to do, which is every frame outside the menu.
+        /// </summary>
+        internal static void ProcessPendingRebuild()
+        {
+            if (_pendingRoot == null || _failed)
             {
                 return;
             }
 
+            Transform root = _pendingRoot;
+            _pendingRoot = null;
+
             try
             {
-                ModOptionsButtonControl[] controls =
-                    UnityEngine.Object.FindObjectsOfType<ModOptionsButtonControl>();
-
-                if (controls.Length == 0)
+                // Scoped to the panel's content root, never the whole scene.
+                foreach (ModOptionsButtonControl control in
+                         root.GetComponentsInChildren<ModOptionsButtonControl>(includeInactive: true))
                 {
-                    // Panel is closed. Drop the cache so the next open starts clean.
-                    if (Handled.Count > 0)
-                    {
-                        Handled.Clear();
-                    }
-
-                    return;
-                }
-
-
-                foreach (ModOptionsButtonControl control in controls)
-                {
-                    if (control == null || !Handled.Add(control.GetInstanceID()))
-                    {
-                        continue;
-                    }
-
                     Apply(control);
                 }
             }
             catch (Exception exception)
             {
-                // A UI cosmetic is never worth spamming the log or risking the tick, so
-                // report once and stay out of the way from then on.
+                // A UI cosmetic is never worth risking the tick, so report once and stay
+                // out of the way from then on.
                 _failed = true;
                 Debug.LogWarning($"[Trainer Plus] Button relabelling disabled: {exception.Message}");
             }
