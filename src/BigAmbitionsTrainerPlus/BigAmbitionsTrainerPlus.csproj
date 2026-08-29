@@ -1,0 +1,91 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- net472 matches Unity's ".NET Framework" API compatibility level, which is what
+         this game ships. Do NOT use netstandard2.0: there is no netstandard.dll facade in
+         Big Ambitions_Data\Managed, so the Mono runtime cannot even read the assembly's
+         attributes and mod discovery dies with a FileNotFoundException for
+         'netstandard, Version=2.0.0.0'.
+         The SDK we build with (net8) is irrelevant to what the game loads. -->
+    <TargetFramework>net472</TargetFramework>
+    <AssemblyName>BigAmbitionsTrainerPlus</AssemblyName>
+    <RootNamespace>BigAmbitionsTrainerPlus</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Version>0.9.0</Version>
+
+    <!-- The mod loader rejects a mod folder containing more than one DLL,
+         so nothing may be copied alongside our assembly. -->
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <DebugType>none</DebugType>
+    <EnableDefaultNoneItems>false</EnableDefaultNoneItems>
+  </PropertyGroup>
+
+  <!-- Override on the command line if the game lives elsewhere:
+       dotnet build -p:GameDir="D:\Games\Big Ambitions" -->
+  <PropertyGroup>
+    <GameDir Condition="'$(GameDir)' == ''">E:\SteamLibrary\steamapps\common\Big Ambitions</GameDir>
+    <ManagedDir>$(GameDir)\Big Ambitions_Data\Managed</ManagedDir>
+    <ModsLocalDir>$(LOCALAPPDATA)Low\Hovgaard Games\Big Ambitions\ModsLocal</ModsLocalDir>
+    <ModInstallDir>$(ModsLocalDir)\Trainer Plus</ModInstallDir>
+  </PropertyGroup>
+
+  <Target Name="CheckGameDir" BeforeTargets="BeforeBuild">
+    <Error Condition="!Exists('$(ManagedDir)')"
+           Text="Game assemblies not found at '$(ManagedDir)'. Pass -p:GameDir=&quot;path\to\Big Ambitions&quot;." />
+  </Target>
+
+  <ItemGroup>
+    <!-- Supplies net472 reference assemblies so no .NET Framework targeting pack
+         has to be installed. Build-time only; nothing ships. -->
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Private=false: reference only, never copy to output. -->
+    <Reference Include="BigAmbitions.ModAPI"  HintPath="$(ManagedDir)\BigAmbitions.ModAPI.dll"  Private="false" />
+    <!-- SaveGameManager, GameInstance, GameVariables and Loan are in the global namespace
+         here; EmployeeInstance is in Entities, VehicleType/VehicleTypeHelper in
+         Vehicles.VehicleTypes, SpecialRivalState in BigAmbitions.Rivals. -->
+    <Reference Include="BigAmbitions"         HintPath="$(ManagedDir)\BigAmbitions.dll"         Private="false" />
+    <!-- ItemInstance / CargoInstance — shelf and container stock. -->
+    <Reference Include="BigAmbitions.Items"      HintPath="$(ManagedDir)\BigAmbitions.Items.dll"      Private="false" />
+    <!-- Skill, on EmployeeInstance.skills. -->
+    <Reference Include="BigAmbitions.Characters" HintPath="$(ManagedDir)\BigAmbitions.Characters.dll" Private="false" />
+    <!-- Timestamp, reached through VehicleInstance.parkingTickets and lastSeen. -->
+    <Reference Include="DayNightCycle"        HintPath="$(ManagedDir)\DayNightCycle.dll"        Private="false" />
+    <!-- InstanceBehavior<T>, how the game exposes its singletons. -->
+    <Reference Include="HGExtensions"         HintPath="$(ManagedDir)\HGExtensions.dll"        Private="false" />
+    <!-- TaggedScriptableObject, the base type of VehicleType. -->
+    <Reference Include="HGPlugins"            HintPath="$(ManagedDir)\HGPlugins.dll"            Private="false" />
+    <!-- ModOptionsButtonControl, for relabelling the game's placeholder button text. -->
+    <Reference Include="BigAmbitions.ModsInternal" HintPath="$(ManagedDir)\BigAmbitions.ModsInternal.dll" Private="false" />
+    <Reference Include="UnityEngine.UI"       HintPath="$(ManagedDir)\UnityEngine.UI.dll"       Private="false" />
+    <Reference Include="Unity.TextMeshPro"    HintPath="$(ManagedDir)\Unity.TextMeshPro.dll"    Private="false" />
+    <Reference Include="UnityEngine.UIModule" HintPath="$(ManagedDir)\UnityEngine.UIModule.dll" Private="false" />
+    <Reference Include="UnityEngine"          HintPath="$(ManagedDir)\UnityEngine.dll"          Private="false" />
+    <Reference Include="UnityEngine.CoreModule" HintPath="$(ManagedDir)\UnityEngine.CoreModule.dll" Private="false" />
+  </ItemGroup>
+
+  <!-- Deploy straight into ModsLocal so the game picks it up.
+       Disable with: dotnet build -p:DeployToGame=false -->
+  <ItemGroup>
+    <!-- The loader registers <modFolder>\Locales and merges <locale>.json from it, so our
+         option labels resolve instead of logging a missing-key warning on every rebuild.
+         Only the mod root is checked for the single-DLL rule, so subfolders are fine. -->
+    <LocaleFiles Include="Locales\*.json" />
+  </ItemGroup>
+
+  <Target Name="DeployToModsLocal" AfterTargets="Build"
+          Condition="'$(DeployToGame)' != 'false' AND Exists('$(ModsLocalDir)')">
+    <MakeDir Directories="$(ModInstallDir)" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ModInstallDir)" />
+    <Copy SourceFiles="@(LocaleFiles)" DestinationFolder="$(ModInstallDir)\Locales" />
+    <Message Importance="high" Text="Deployed $(TargetFileName) + @(LocaleFiles->Count()) locale file(s) -> $(ModInstallDir)" />
+  </Target>
+
+</Project>
