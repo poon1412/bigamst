@@ -48,8 +48,23 @@
   <ItemGroup>
     <!-- Private=false: reference only, never copy to output. -->
     <Reference Include="BigAmbitions.ModAPI"  HintPath="$(ManagedDir)\BigAmbitions.ModAPI.dll"  Private="false" />
-    <!-- SaveGameManager / GameInstance live here, in the global namespace. -->
+    <!-- SaveGameManager, GameInstance, GameVariables and Loan are in the global namespace
+         here; EmployeeInstance is in Entities, VehicleType/VehicleTypeHelper in
+         Vehicles.VehicleTypes, SpecialRivalState in BigAmbitions.Rivals. -->
     <Reference Include="BigAmbitions"         HintPath="$(ManagedDir)\BigAmbitions.dll"         Private="false" />
+    <!-- ItemInstance / CargoInstance — shelf and container stock. -->
+    <Reference Include="BigAmbitions.Items"      HintPath="$(ManagedDir)\BigAmbitions.Items.dll"      Private="false" />
+    <!-- Skill, on EmployeeInstance.skills. -->
+    <Reference Include="BigAmbitions.Characters" HintPath="$(ManagedDir)\BigAmbitions.Characters.dll" Private="false" />
+    <!-- Timestamp, reached through VehicleInstance.parkingTickets and lastSeen. -->
+    <Reference Include="DayNightCycle"        HintPath="$(ManagedDir)\DayNightCycle.dll"        Private="false" />
+    <!-- TaggedScriptableObject, the base type of VehicleType. -->
+    <Reference Include="HGPlugins"            HintPath="$(ManagedDir)\HGPlugins.dll"            Private="false" />
+    <!-- ModOptionsButtonControl, for relabelling the game's placeholder button text. -->
+    <Reference Include="BigAmbitions.ModsInternal" HintPath="$(ManagedDir)\BigAmbitions.ModsInternal.dll" Private="false" />
+    <Reference Include="UnityEngine.UI"       HintPath="$(ManagedDir)\UnityEngine.UI.dll"       Private="false" />
+    <Reference Include="Unity.TextMeshPro"    HintPath="$(ManagedDir)\Unity.TextMeshPro.dll"    Private="false" />
+    <Reference Include="UnityEngine.UIModule" HintPath="$(ManagedDir)\UnityEngine.UIModule.dll" Private="false" />
     <Reference Include="UnityEngine"          HintPath="$(ManagedDir)\UnityEngine.dll"          Private="false" />
     <Reference Include="UnityEngine.CoreModule" HintPath="$(ManagedDir)\UnityEngine.CoreModule.dll" Private="false" />
   </ItemGroup>

@@ -219,6 +219,88 @@ public class GameInstance
 `SaveGameManager.Current` is **null outside an active save** — null-check every access.
 `SaveGameManager.CurrentDay` / `CurrentHour` are convenience statics that already do.
 
+### `GameInstance.gameVariables` — the sandbox config, live and mutable
+
+`SaveGameManager.Current.gameVariables` is a **`GameVariables`**, the game's own
+difficulty/custom-game settings object, editable at runtime. This is the single richest
+cheat surface in the game and needs no patching at all.
+
+```csharp
+public class GameVariables
+{
+    public Difficulty difficulty = Difficulty.Normal;
+    public int startingAge = 18;
+    public bool disableAging;
+    public bool disableEnergy;
+    public bool disableHappiness;
+    public bool allCoursesUnlocked;
+    public int startingMoney = 4200;
+    public int taxPercentage = 10;
+    public int daysPerYear = 60;
+    public float marketPriceMultiplier = 1f;
+    public float employeeHourlySalaryMultiplier = 1f;
+    public float bankInterestMultiplier = 1f;
+    public bool tutorialEnabled = true;
+    public float rivalsDifficultyMultiplier = 1f;
+    public bool disableVehicleDamage;
+    public bool disableVehicleFuel;
+    public bool allContactsUnlocked;
+    public float baseCustomerPromotionMultiplier = 0.5f;
+    public float wholesaleUrgentFeeMultiplier = 0.2f;
+    public float importerUrgentFeeMultiplier = 0.75f;
+    public bool disableWholesaleAndImportLimits;
+    public bool allProductsAvailableFromImporters;
+    public float exportMultiplier = 0.65f;
+    public float sellingMultiplier = 0.75f;
+}
+```
+
+The defaults above are the game's own, and are what the sliders should reset to.
+
+### `GameInstance.modData`
+
+`public Dictionary<string, string> modData` — a **per-save** key/value store the game
+serialises for mods. Worth using for anything that should follow the save rather than the
+install, since `PlayerPrefs` option values are keyed by the mod's folder path.
+
+### Type and namespace map
+
+Everything below is in `BigAmbitions.dll` unless noted. Namespaces are not obvious, and
+`ilspycmd` output only shows them via the enclosing `namespace` block:
+
+| Type | Namespace |
+|---|---|
+| `SaveGameManager`, `GameInstance`, `GameVariables`, `Loan`, `Skill` | *(global)* |
+| `EmployeeInstance` | `Entities` |
+| `VehicleInstance` | *(global)* |
+| `VehicleType`, `VehicleTypeHelper` | `Vehicles.VehicleTypes` |
+| `RivalState`, `SpecialRivalState`, `RivalData` | `BigAmbitions.Rivals` |
+| `Timestamp` | *(global)*, in **`DayNightCycle.dll`** |
+| `TaggedScriptableObject` (base of `VehicleType`) | *(global)*, in **`HGPlugins.dll`** |
+| `TextLocalizationComponent`, `LocalizorManager` | in **`HGPlugins.dll`** |
+
+Touching vehicles therefore drags in `DayNightCycle.dll` (via `parkingTickets`) and
+`HGPlugins.dll` (via `VehicleType`'s base class), even though neither is used directly.
+
+### Other per-entity fields worth cheating
+
+`EmployeeInstance` (`Entities`): `satisfaction` (clamped `0..100`), `hourlyWage`,
+`isAbsent`, `nextSickDay`, `hasSendQuitWarning`, `skills`, `workedHoursToday`,
+`workedHoursThisWeek`, `poached`, `isReplaced`, `dayHired`.
+
+`VehicleInstance`: `fuel`, `damage`, `dirtiness`, `deformations`, `unpaidParkingAmount`,
+`parkingTickets`, `parkingState`, `cargoInstances`. **Fuel capacity is per type** —
+`VehicleTypeHelper.GetVehicleType(vehicle.vehicleTypeName).maxFuel`, and
+`IsMotorVehicle => maxFuel > 0f` so bicycles must be skipped.
+
+`SpecialRivalState` (`BigAmbitions.Rivals`): `isActive`, `isDefeated`,
+`completedTimelineEntryIds`, `defenseStates`. Stored on
+`GameInstance.specialRivalStates`; `GameInstance.rivalStates` holds the plain
+`RivalState` history entries.
+
+`BuildingRegistration`: `RentPerDay`, `RentedByPlayer`, `AvailableForRent`,
+`temporarilyClosed`, `retailPrices`, `itemInstances`, `dirtSpots`, `orderHistory`.
+
 ### Stat ranges
 
 From `EnergySettings` (ScriptableObject):
@@ -279,6 +361,101 @@ Confirmed behaviour:
 - Slider `onValueChanged` fires continuously while dragging, not just on release. Anything
   expensive in that callback must be debounced.
 - `[ModEntryOnCityLoad]` activates once a save is loaded — correct scope for a trainer.
+
+### Game bug: mod buttons always read "YOUR TEXT HERE"
+
+`ModOptionsButtonControl.Initialize` assigns our `Label` to the **row label** and never
+touches the button's own text:
+
+```csharp
+ButtonOption buttonOption = (ButtonOption)option;
+label.Key = buttonOption.Label;        // row label — ours
+button.onClick.RemoveAllListeners();   // button text is never set
+```
+
+So every mod button in the game keeps its prefab placeholder. **Nothing we pass through
+`AddButton` can change it.** This affects all mods, not just ours.
+
+Workarounds:
+- Put the whole instruction in the label and suffix an arrow ("Pay off all loans  →"),
+  so the row reads sensibly next to the meaningless button.
+- Prefer toggles and sliders, which render correctly.
+- A custom `ModOption` with a `SpawnUi` override could build a proper button, at the cost
+  of hand-building Unity UI.
+
+Worth reporting upstream at `github.com/hovgaardgames/bigambitions` — it's a one-line fix
+on their side.
+
+### Slider value labels work via the localization fallback
+
+`SliderOption.ValueLabelKey` is only shown when non-empty
+(`valueLabel.gameObject.SetActive(showValueLabel)`), and it is passed
+`Arguments = new { value = num }`.
+
+A missing key falls back to the raw string (`LocalizorManager.GetLocalization` returns
+`label` when `Mode == 0`, else the lowercased `text`), and arguments are applied as a
+literal `stringBuilder.Replace("{" + key + "}", value)`. So substitution happens **even
+for keys that don't exist**:
+
+- `ValueLabelKey: "${value}M"` renders `$5M`
+- `ValueLabelKey: "{value}:00"` renders `14:00`
+
+Casing of labels is preserved in practice, so `Mode == 0` on this build. Don't rely on
+that for anything load-bearing.
+
+### Sliders, toggles and dropdowns re-fire their callback on every panel build
+
+`ModOptionsSliderControl.Initialize` ends with `data.OnValueChanged?.Invoke(num)`, and the
+toggle and dropdown controls do the same. `ModOptionsViewController.Rebuild` runs on every
+`OnEnable`, so **opening the Options menu re-invokes every callback with its stored value**.
+
+That is correct for settings that should be re-applied (tax rate, multipliers) but wrong
+for one-shot actions. A "jump to hour" slider moved the clock every time the panel opened.
+
+**Rule: a slider callback must only record state.** Any action goes behind a button.
+
+### Restocking: use the game's own capacity rule
+
+Stock lives at `BuildingRegistration.itemInstances` → `ItemInstance.cargoInstances` →
+`CargoInstance { itemName, amount, pricePerUnit, paid }`.
+
+Capacity is **not** a constant. Call `CargoInstance.GetMaxStockCapacity(ItemInstance holder)`,
+and mirror the game's nested-cargo special case from `ItemInstance.TryAddCargo`:
+
+```csharp
+int capacity = cargo.nestedCargoInstances.Count > 0 ? 1 : cargo.GetMaxStockCapacity(holder);
+```
+
+`GetMaxStockCapacity` dereferences `ItemCached` on both the cargo and the holder, and
+`ItemCached` is null whenever `ItemsGetter.GetByName` cannot resolve the name — so null-check
+both and wrap the call, or one bad item aborts the whole sweep. Setting `paid = true` makes
+the restock free.
+
+Filter properties on `BuildingRegistration.RentedByPlayer`; the list also holds world
+scenery and rivals' buildings.
+
+### `EmployeeInstance.skills` is obsolete — use `characterData.skills`
+
+```csharp
+[Obsolete] public List<Skill> skills;          // still present, still compiles, not live
+```
+
+The live list is `EmployeeInstance.characterData.skills` (`CharacterData.skills`).
+`Skill { string name; float value; }`, capped at `100f` per `EmployeeInstance`'s own private
+`MaxSkillValue`. Writing to the obsolete list silently does nothing.
+
+Also `[Obsolete]` on `EmployeeInstance`: `hired`, `declined`, `assignedHRManager`, `presetId`.
+
+### Button placeholder text is `"Your text here"`, sentence case
+
+The panel renders it in caps through TMP font styling, so matching on the visible
+`"YOUR TEXT HERE"` never fires. Compare case-insensitively, and **only** rewrite captions
+that still hold the placeholder — other buttons in the same panel carry real captions like
+`"Reset windows"` and must be left alone.
+
+The caption is driven by a `TextLocalizationComponent`
+(`Localizor.LanguageChangeEvent`, in `HGPlugins.dll`), which overwrites the text on its next
+refresh — set its `Key` and disable it as well as assigning `.text`.
 
 ### Option labels are localization keys
 
