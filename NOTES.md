@@ -345,10 +345,10 @@ Untouched by `com.thrasher.bigambitions.trainer`, all present as game assemblies
 Load path proven end to end with the no-op test mod:
 
 ```
-[Mod:Trainer Plus] Trainer Plus loading. ModId='C:\...\ModsLocal\Trainer Plus' Root='C:/...\ModsLocal\Trainer Plus'
-[Mod:Trainer Plus] Trainer Plus loaded.
-[Mod:Trainer Plus] Test slider -> 63
-[Mod:Trainer Plus] Test toggle -> True
+[Mod:Bigamst Trainer] Bigamst Trainer loading. ModId='C:\...\ModsLocal\Bigamst Trainer' Root='C:/...\ModsLocal\Bigamst Trainer'
+[Mod:Bigamst Trainer] Bigamst Trainer loaded.
+[Mod:Bigamst Trainer] Test slider -> 63
+[Mod:Bigamst Trainer] Test toggle -> True
 ```
 
 Confirmed behaviour:
@@ -553,7 +553,7 @@ the game uses Unity's ".NET Framework" API compatibility level, not .NET Standar
 A `netstandard2.0` build is rejected before any of our code runs. From `Player.log`:
 
 ```
-[ModDiscovery] Failed to read registered mod classes from 'BigAmbitionsTrainerPlus.dll'.
+[ModDiscovery] Failed to read registered mod classes from 'BigamstTrainer.dll'.
 FileNotFoundException: Could not load file or assembly
   'netstandard, Version=2.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'
   at System.MonoCustomAttrs.GetCustomAttributesInternal(...)
@@ -575,7 +575,7 @@ Verify after any csproj change — the emitted assembly must reference `mscorlib
 `netstandard`:
 
 ```bash
-tr -c '[:print:]' '\n' < bin/Release/BigAmbitionsTrainerPlus.dll | grep -E '^(netstandard|mscorlib)' | sort -u
+tr -c '[:print:]' '\n' < bin/Release/BigamstTrainer.dll | grep -E '^(netstandard|mscorlib)' | sort -u
 ```
 
 ## Rules for this project

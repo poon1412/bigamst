@@ -1,12 +1,12 @@
 {
-  "trainer plus — money": "Trainer Plus — Money",
+  "bigamst trainer — money": "Bigamst Trainer — Money",
   "amount": "Amount",
   "add the amount above  →": "Add the amount above",
   "subtract the amount above  →": "Subtract the amount above",
   "never drop below": "Never drop below",
   "pay off all loans  →": "Pay off all loans",
 
-  "trainer plus — economy": "Trainer Plus — Economy",
+  "bigamst trainer — economy": "Bigamst Trainer — Economy",
   "tax rate": "Tax rate",
   "employee wages": "Employee wages",
   "market prices": "Market prices",
@@ -17,7 +17,7 @@
   "all contacts unlocked": "All contacts unlocked",
   "all courses unlocked": "All courses unlocked",
 
-  "trainer plus — businesses": "Trainer Plus — Businesses",
+  "bigamst trainer — businesses": "Bigamst Trainer — Businesses",
   "restock every shelf and fridge  →": "Restock every shelf and fridge",
   "keep everything restocked": "Keep everything restocked",
   "mark all stock as paid for  →": "Mark all stock as paid for",
@@ -25,7 +25,7 @@
   "keep everything spotless": "Keep everything spotless",
   "no rent on owned property": "No rent on owned property",
 
-  "trainer plus — player": "Trainer Plus — Player",
+  "bigamst trainer — player": "Bigamst Trainer — Player",
   "keep energy full": "Keep energy full",
   "keep hunger full": "Keep hunger full",
   "keep happiness full": "Keep happiness full",
@@ -33,28 +33,28 @@
   "disable energy system entirely": "Disable energy system entirely",
   "restore energy, hunger and happiness  →": "Restore energy, hunger and happiness",
 
-  "trainer plus — employees": "Trainer Plus — Employees",
+  "bigamst trainer — employees": "Bigamst Trainer — Employees",
   "keep all employees fully satisfied": "Keep all employees fully satisfied",
   "satisfy all employees now  →": "Satisfy all employees now",
   "clear absences and sick days  →": "Clear absences and sick days",
   "max out every employee skill  →": "Max out every employee skill",
 
-  "trainer plus — vehicles": "Trainer Plus — Vehicles",
+  "bigamst trainer — vehicles": "Bigamst Trainer — Vehicles",
   "disable vehicle damage": "Disable vehicle damage",
   "disable fuel consumption": "Disable fuel consumption",
   "repair, refuel and clean all  →": "Repair, refuel and clean all",
   "clear parking tickets and fines  →": "Clear parking tickets and fines",
 
-  "trainer plus — rivals": "Trainer Plus — Rivals",
+  "bigamst trainer — rivals": "Bigamst Trainer — Rivals",
   "rival difficulty": "Rival difficulty",
   "defeat all rivals  →": "Defeat all rivals",
 
-  "trainer plus — teleport": "Trainer Plus — Teleport",
+  "bigamst trainer — teleport": "Bigamst Trainer — Teleport",
   "go to map destination  →": "Go to map destination",
   "go inside map destination  →": "Go inside map destination",
   "go to quest target  →": "Go to quest target",
 
-  "trainer plus — time": "Trainer Plus — Time",
+  "bigamst trainer — time": "Bigamst Trainer — Time",
   "freeze the clock": "Freeze the clock",
   "target hour": "Target hour",
   "jump to the target hour  →": "Jump to the target hour",

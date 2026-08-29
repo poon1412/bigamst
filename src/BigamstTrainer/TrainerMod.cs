@@ -7,9 +7,9 @@ using Entities;
 using UnityEngine;
 using Vehicles.VehicleTypes;
 
-[assembly: RegisterModClass(typeof(BigAmbitionsTrainerPlus.TrainerMod))]
+[assembly: RegisterModClass(typeof(BigamstTrainer.TrainerMod))]
 
-namespace BigAmbitionsTrainerPlus
+namespace BigamstTrainer
 {
     /// <summary>
     /// Entry point. The City scope means this loads once a save is actually in play,
@@ -20,31 +20,31 @@ namespace BigAmbitionsTrainerPlus
     {
         // Option ids become PlayerPrefs keys "m:{modId}:{optionId}". They must stay stable
         // across releases or previously saved values are silently dropped.
-        private const string OptMoneyAmount     = "trainerplus.money.amount";
-        private const string OptMoneyFloor      = "trainerplus.money.floor";
-        private const string OptTaxPercent      = "trainerplus.econ.tax";
-        private const string OptSalaryMult      = "trainerplus.econ.salary_mult";
-        private const string OptMarketMult      = "trainerplus.econ.market_mult";
-        private const string OptInterestMult    = "trainerplus.econ.interest_mult";
-        private const string OptSellMult        = "trainerplus.econ.sell_mult";
-        private const string OptNoTradeLimits   = "trainerplus.econ.no_trade_limits";
-        private const string OptAllImports      = "trainerplus.econ.all_imports";
-        private const string OptAllContacts     = "trainerplus.econ.all_contacts";
-        private const string OptAllCourses      = "trainerplus.econ.all_courses";
-        private const string OptKeepEnergy      = "trainerplus.player.keep_energy";
-        private const string OptKeepHunger      = "trainerplus.player.keep_hunger";
-        private const string OptKeepHappiness   = "trainerplus.player.keep_happiness";
-        private const string OptNoAging         = "trainerplus.player.no_aging";
-        private const string OptNoEnergyDrain   = "trainerplus.player.no_energy";
-        private const string OptAutoRestock     = "trainerplus.business.auto_restock";
-        private const string OptAutoClean       = "trainerplus.business.auto_clean";
-        private const string OptFreeRent        = "trainerplus.business.free_rent";
-        private const string OptKeepStaffHappy  = "trainerplus.employee.keep_satisfied";
-        private const string OptNoVehicleDamage = "trainerplus.vehicle.no_damage";
-        private const string OptNoVehicleFuel   = "trainerplus.vehicle.no_fuel";
-        private const string OptRivalDifficulty = "trainerplus.rivals.difficulty";
-        private const string OptFreezeClock     = "trainerplus.time.freeze";
-        private const string OptSetHour         = "trainerplus.time.hour";
+        private const string OptMoneyAmount     = "bigamst.money.amount";
+        private const string OptMoneyFloor      = "bigamst.money.floor";
+        private const string OptTaxPercent      = "bigamst.econ.tax";
+        private const string OptSalaryMult      = "bigamst.econ.salary_mult";
+        private const string OptMarketMult      = "bigamst.econ.market_mult";
+        private const string OptInterestMult    = "bigamst.econ.interest_mult";
+        private const string OptSellMult        = "bigamst.econ.sell_mult";
+        private const string OptNoTradeLimits   = "bigamst.econ.no_trade_limits";
+        private const string OptAllImports      = "bigamst.econ.all_imports";
+        private const string OptAllContacts     = "bigamst.econ.all_contacts";
+        private const string OptAllCourses      = "bigamst.econ.all_courses";
+        private const string OptKeepEnergy      = "bigamst.player.keep_energy";
+        private const string OptKeepHunger      = "bigamst.player.keep_hunger";
+        private const string OptKeepHappiness   = "bigamst.player.keep_happiness";
+        private const string OptNoAging         = "bigamst.player.no_aging";
+        private const string OptNoEnergyDrain   = "bigamst.player.no_energy";
+        private const string OptAutoRestock     = "bigamst.business.auto_restock";
+        private const string OptAutoClean       = "bigamst.business.auto_clean";
+        private const string OptFreeRent        = "bigamst.business.free_rent";
+        private const string OptKeepStaffHappy  = "bigamst.employee.keep_satisfied";
+        private const string OptNoVehicleDamage = "bigamst.vehicle.no_damage";
+        private const string OptNoVehicleFuel   = "bigamst.vehicle.no_fuel";
+        private const string OptRivalDifficulty = "bigamst.rivals.difficulty";
+        private const string OptFreezeClock     = "bigamst.time.freeze";
+        private const string OptSetHour         = "bigamst.time.hour";
 
         /// <summary>
         /// Energy, Hunger and Happiness are normalised 0..100 by EnergySettings
@@ -128,7 +128,7 @@ namespace BigAmbitionsTrainerPlus
 
             var options = new ModOptions()
 
-                .AddHeader("Trainer Plus — Money")
+                .AddHeader("Bigamst Trainer — Money")
                 .AddDropdown(OptMoneyAmount, "Amount", MoneyAmountChoices, 1, OnMoneyAmountChanged)
                 .AddButton("Add the amount above  →", () => AddMoney(_selectedMoneyAmount))
                 .AddButton("Subtract the amount above  →", () => AddMoney(-_selectedMoneyAmount))
@@ -137,7 +137,7 @@ namespace BigAmbitionsTrainerPlus
                 .AddButton("Pay off all loans  →", ClearLoans)
                 .AddSplitter()
 
-                .AddHeader("Trainer Plus — Economy")
+                .AddHeader("Bigamst Trainer — Economy")
                 .AddSlider(OptTaxPercent, "Tax rate", 0, 50, 10,
                     value => WithVariables("Tax rate", value, v => v.taxPercentage = value), LabelPercent)
                 .AddSlider(OptSalaryMult, "Employee wages", 0, 200, 100,
@@ -158,7 +158,7 @@ namespace BigAmbitionsTrainerPlus
                     value => WithVariables("All courses", value, v => v.allCoursesUnlocked = value))
                 .AddSplitter()
 
-                .AddHeader("Trainer Plus — Player")
+                .AddHeader("Bigamst Trainer — Player")
                 .AddToggle(OptKeepEnergy,    "Keep energy full",    false, v => { _keepEnergy = v; LogSetting("Keep energy full", v); })
                 .AddToggle(OptKeepHunger,    "Keep hunger full",    false, v => { _keepHunger = v; LogSetting("Keep hunger full", v); })
                 .AddToggle(OptKeepHappiness, "Keep happiness full", false, v => { _keepHappiness = v; LogSetting("Keep happiness full", v); })
@@ -169,7 +169,7 @@ namespace BigAmbitionsTrainerPlus
                 .AddButton("Restore energy, hunger and happiness  →", RestoreAllStats)
                 .AddSplitter()
 
-                .AddHeader("Trainer Plus — Businesses")
+                .AddHeader("Bigamst Trainer — Businesses")
                 .AddButton("Restock every shelf and fridge  →", () => BusinessCheats.RestockEverything())
                 .AddToggle(OptAutoRestock, "Keep everything restocked", false, v => { _autoRestock = v; LogSetting("Auto restock", v); })
                 .AddButton("Mark all stock as paid for  →", BusinessCheats.MarkStockPaid)
@@ -185,7 +185,7 @@ namespace BigAmbitionsTrainerPlus
                 })
                 .AddSplitter()
 
-                .AddHeader("Trainer Plus — Employees")
+                .AddHeader("Bigamst Trainer — Employees")
                 .AddToggle(OptKeepStaffHappy, "Keep all employees fully satisfied", false,
                     v => { _keepStaffSatisfied = v; LogSetting("Keep staff satisfied", v); })
                 .AddButton("Satisfy all employees now  →", SatisfyAllEmployees)
@@ -193,7 +193,7 @@ namespace BigAmbitionsTrainerPlus
                 .AddButton("Max out every employee skill  →", BusinessCheats.MaxEmployeeSkills)
                 .AddSplitter()
 
-                .AddHeader("Trainer Plus — Vehicles")
+                .AddHeader("Bigamst Trainer — Vehicles")
                 .AddToggle(OptNoVehicleDamage, "Disable vehicle damage", false,
                     value => WithVariables("Disable vehicle damage", value, v => v.disableVehicleDamage = value))
                 .AddToggle(OptNoVehicleFuel, "Disable fuel consumption", false,
@@ -202,19 +202,19 @@ namespace BigAmbitionsTrainerPlus
                 .AddButton("Clear parking tickets and fines  →", ClearParkingFines)
                 .AddSplitter()
 
-                .AddHeader("Trainer Plus — Rivals")
+                .AddHeader("Bigamst Trainer — Rivals")
                 .AddSlider(OptRivalDifficulty, "Rival difficulty", 0, 200, 100,
                     value => WithVariables("Rival difficulty", value, v => v.rivalsDifficultyMultiplier = value / 100f), LabelPercent)
                 .AddButton("Defeat all rivals  →", DefeatAllRivals)
                 .AddSplitter()
 
-                .AddHeader("Trainer Plus — Teleport")
+                .AddHeader("Bigamst Trainer — Teleport")
                 .AddButton("Go to map destination  →", TeleportCheats.ToDestination)
                 .AddButton("Go inside map destination  →", TeleportCheats.InsideDestination)
                 .AddButton("Go to quest target  →", TeleportCheats.ToQuestTarget)
                 .AddSplitter()
 
-                .AddHeader("Trainer Plus — Time")
+                .AddHeader("Bigamst Trainer — Time")
                 .AddToggle(OptFreezeClock, "Freeze the clock", false, OnFreezeClockChanged)
                 // The slider only records the target. Applying it directly would move the
                 // clock every time the panel is built, because ModOptionsSliderControl
@@ -231,7 +231,7 @@ namespace BigAmbitionsTrainerPlus
             UnityLifecycleProvider.OnUpdate += OnUpdate;
             _tickSubscribed = true;
 
-            _log.Info("Trainer Plus loaded.");
+            _log.Info("Bigamst Trainer loaded.");
             return Task.CompletedTask;
         }
 
@@ -243,7 +243,7 @@ namespace BigAmbitionsTrainerPlus
                 _tickSubscribed = false;
             }
 
-            _log?.Info("Trainer Plus unloading.");
+            _log?.Info("Bigamst Trainer unloading.");
             BusinessCheats.Reset();
             TeleportCheats.Reset();
             LastApplied.Clear();
