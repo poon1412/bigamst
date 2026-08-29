@@ -6,7 +6,7 @@ using Localizor;
 using Helpers;
 using UnityEngine;
 
-namespace BigAmbitionsTrainerPlus
+namespace BigamstTrainer
 {
     /// <summary>
     /// Teleporting to the destination marker set on the city map.

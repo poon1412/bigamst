@@ -4,7 +4,7 @@ using BAModAPI;
 using BigAmbitions.Characters.Skills;
 using BigAmbitions.Items;
 
-namespace BigAmbitionsTrainerPlus
+namespace BigamstTrainer
 {
     /// <summary>
     /// Cheats that walk the player's properties: stock, rent, cleanliness, and the

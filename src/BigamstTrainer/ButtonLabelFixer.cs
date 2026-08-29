@@ -6,7 +6,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace BigAmbitionsTrainerPlus
+namespace BigamstTrainer
 {
     /// <summary>
     /// Works around a bug in the game's mod options UI.
@@ -90,7 +90,7 @@ namespace BigAmbitionsTrainerPlus
                 // A UI cosmetic is never worth risking the tick, so report once and stay
                 // out of the way from then on.
                 _failed = true;
-                Debug.LogWarning($"[Trainer Plus] Button relabelling disabled: {exception.Message}");
+                Debug.LogWarning($"[Bigamst Trainer] Button relabelling disabled: {exception.Message}");
             }
         }
 

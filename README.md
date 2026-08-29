@@ -1,4 +1,4 @@
-# Trainer Plus — Big Ambitions
+# Bigamst Trainer — Big Ambitions
 
 A trainer mod for [Big Ambitions](https://store.steampowered.com/app/1331550/Big_Ambitions/),
 built on the game's **own mod API**. No BepInEx, no injectors, no dependency folder — one
@@ -10,7 +10,7 @@ Built and tested against **EA 0.11, Build 3670**.
 
 1. Open `%LOCALAPPDATA%Low\Hovgaard Games\Big Ambitions\ModsLocal\`
    (paste that into the Explorer address bar).
-2. Copy the `Trainer Plus` folder into it.
+2. Copy the `Bigamst Trainer` folder into it.
 3. Start the game and load a save.
 4. **Options → MODS**.
 
@@ -19,8 +19,8 @@ in its root:
 
 ```
 ModsLocal\
-└── Trainer Plus\
-    ├── BigAmbitionsTrainerPlus.dll
+└── Bigamst Trainer\
+    ├── BigamstTrainer.dll
     └── Locales\
         └── en.json
 ```
@@ -29,7 +29,7 @@ The folder name is the mod's display name, so rename it if you like.
 
 ## Uninstall
 
-**Delete the `Trainer Plus` folder.**
+**Delete the `Bigamst Trainer` folder.**
 
 The enable/disable toggle on the Mods screen does not work for locally installed mods — the
 game only stores that state for Steam Workshop items, so it is greyed out and always shows
@@ -109,15 +109,15 @@ Needs the .NET SDK 8 or newer. The game's assemblies are referenced directly fro
 install, so nothing is bundled.
 
 ```bash
-dotnet build src/BigAmbitionsTrainerPlus/BigAmbitionsTrainerPlus.csproj -c Release
+dotnet build src/BigamstTrainer/BigamstTrainer.csproj -c Release
 ```
 
-The build copies the DLL and `Locales` into `ModsLocal\Trainer Plus\` automatically.
+The build copies the DLL and `Locales` into `ModsLocal\Bigamst Trainer\` automatically.
 
 If the game is not at the default path:
 
 ```bash
-dotnet build src/BigAmbitionsTrainerPlus/BigAmbitionsTrainerPlus.csproj -c Release -p:GameDir="D:\Games\Big Ambitions"
+dotnet build src/BigamstTrainer/BigamstTrainer.csproj -c Release -p:GameDir="D:\Games\Big Ambitions"
 ```
 
 Add `-p:DeployToGame=false` to build without installing.

@@ -8,8 +8,8 @@
          'netstandard, Version=2.0.0.0'.
          The SDK we build with (net8) is irrelevant to what the game loads. -->
     <TargetFramework>net472</TargetFramework>
-    <AssemblyName>BigAmbitionsTrainerPlus</AssemblyName>
-    <RootNamespace>BigAmbitionsTrainerPlus</RootNamespace>
+    <AssemblyName>BigamstTrainer</AssemblyName>
+    <RootNamespace>BigamstTrainer</RootNamespace>
     <LangVersion>latest</LangVersion>
     <Version>0.9.0</Version>
 
@@ -28,7 +28,7 @@
     <GameDir Condition="'$(GameDir)' == ''">E:\SteamLibrary\steamapps\common\Big Ambitions</GameDir>
     <ManagedDir>$(GameDir)\Big Ambitions_Data\Managed</ManagedDir>
     <ModsLocalDir>$(LOCALAPPDATA)Low\Hovgaard Games\Big Ambitions\ModsLocal</ModsLocalDir>
-    <ModInstallDir>$(ModsLocalDir)\Trainer Plus</ModInstallDir>
+    <ModInstallDir>$(ModsLocalDir)\Bigamst Trainer</ModInstallDir>
   </PropertyGroup>
 
   <Target Name="CheckGameDir" BeforeTargets="BeforeBuild">
