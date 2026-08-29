@@ -78,6 +78,11 @@
          option labels resolve instead of logging a missing-key warning on every rebuild.
          Only the mod root is checked for the single-DLL rule, so subfolders are fine. -->
     <LocaleFiles Include="Locales\*.json" />
+    <!-- Steam Workshop preview image. The in-game uploader scans the mod folder root
+         (top level only) for the first .png/.jpg/.jpeg under its size limit, so the name
+         does not matter but the location does. It is moved out of the folder during
+         upload so it is not published as mod content, then moved back. -->
+    <ThumbnailFile Include="Thumbnail.png" />
   </ItemGroup>
 
   <Target Name="DeployToModsLocal" AfterTargets="Build"
@@ -85,6 +90,7 @@
     <MakeDir Directories="$(ModInstallDir)" />
     <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ModInstallDir)" />
     <Copy SourceFiles="@(LocaleFiles)" DestinationFolder="$(ModInstallDir)\Locales" />
+    <Copy SourceFiles="@(ThumbnailFile)" DestinationFolder="$(ModInstallDir)" Condition="'@(ThumbnailFile)' != ''" />
     <Message Importance="high" Text="Deployed $(TargetFileName) + @(LocaleFiles->Count()) locale file(s) -> $(ModInstallDir)" />
   </Target>
 

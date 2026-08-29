@@ -21,11 +21,15 @@ in its root:
 ModsLocal\
 └── Bigamst Trainer\
     ├── BigamstTrainer.dll
+    ├── Thumbnail.png
     └── Locales\
         └── en.json
 ```
 
 The folder name is the mod's display name, so rename it if you like.
+
+`Thumbnail.png` is only read when uploading to the Steam Workshop from inside the game.
+Delete it if you just want to play — it costs more disk space than the rest of the mod.
 
 ## Uninstall
 
@@ -132,6 +136,20 @@ decompiler output rather than guesswork. Worth reading before changing anything.
 
 Copy `Locales/en.json` to `Locales/<locale>.json` and translate the values, leaving the keys
 and any `{value}` placeholders alone. The game loads it automatically.
+
+## Publishing to the Steam Workshop
+
+The game uploads mods itself, from **Main Menu → Mods → Upload**.
+
+It scans the mod folder's **top level** for the first `.png`, `.jpg` or `.jpeg` under its
+size limit and uses that as the Workshop preview image. The filename does not matter, only
+that it sits in the folder root — which is why `Thumbnail.png` lives beside the DLL rather
+than in a subfolder. The image is moved out of the folder during upload so it is not
+published as mod content, then moved back afterwards.
+
+You also need a title, a description, a changelog and a target build number (**3670** for
+EA 0.11). The uploader refuses the submission if any of those are missing, and it rejects a
+target build number higher than the game you are running.
 
 ## License
 
