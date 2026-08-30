@@ -214,10 +214,27 @@ namespace BigamstTrainer
                     value => WithVariables("No trade limits", value, v => v.disableWholesaleAndImportLimits = value))
                 .AddToggle(OptAllImports, "All products available from importers", false,
                     value => WithVariables("All importer products", value, v => v.allProductsAvailableFromImporters = value))
-                .AddToggle(OptAllContacts, "All contacts unlocked", false,
-                    value => WithVariables("All contacts", value, v => v.allContactsUnlocked = value))
-                .AddToggle(OptAllCourses, "All courses unlocked", false,
-                    value => WithVariables("All courses", value, v => v.allCoursesUnlocked = value))
+                // Setting the flag only records the choice — the game unlocks by calling
+                // ContactsHelper.UnlockAllContacts alongside it, as ApplyNewDifficulty
+                // does. Without that the toggle appears to do nothing.
+                .AddToggle(OptAllContacts, "All contacts unlocked", false, value =>
+                {
+                    bool wasOff = SaveGameManager.Current?.gameVariables?.allContactsUnlocked == false;
+                    WithVariables("All contacts", value, v => v.allContactsUnlocked = value);
+                    if (value && wasOff)
+                    {
+                        GameplayCheats.UnlockAllContacts();
+                    }
+                })
+                .AddToggle(OptAllCourses, "All courses unlocked", false, value =>
+                {
+                    bool wasOff = SaveGameManager.Current?.gameVariables?.allCoursesUnlocked == false;
+                    WithVariables("All courses", value, v => v.allCoursesUnlocked = value);
+                    if (value && wasOff)
+                    {
+                        GameplayCheats.UnlockAllCourses();
+                    }
+                })
 
                 .AddSplitter()
                 .AddHeader("Player")
@@ -230,6 +247,7 @@ namespace BigamstTrainer
                     value => WithVariables("Disable energy system", value, v => v.disableEnergy = value))
                 .AddButton("Restore energy, hunger and happiness  →", RestoreAllStats)
                 .AddButton("Unlock all courses  →", GameplayCheats.UnlockAllCourses)
+                .AddButton("Unlock all contacts  →", GameplayCheats.UnlockAllContacts)
                 .AddButton("Get 1 year younger  →", () => GameplayCheats.ChangeAge(-1f))
                 .AddButton("Complete all personal goals  →", GameplayCheats.CompleteAllPersonalGoals)
                 .AddButton("Clear completed personal goals  →", GameplayCheats.ResetPersonalGoals)

@@ -73,7 +73,10 @@ namespace BigamstTrainer
             Run($"Age {years:+0;-0} year(s)", () => GameManager.Command_ChangeAge(years));
 
         internal static void UnlockAllCourses() =>
-            Run("Unlocked all courses", EducationHelper.Command_UnlockAllCourses);
+            Run("Unlocked all courses", EducationHelper.UnlockAllCourses);
+
+        internal static void UnlockAllContacts() =>
+            Run("Unlocked all contacts", Entities.ContactsHelper.UnlockAllContacts);
 
         // ---- Progression ---------------------------------------------------------
 
