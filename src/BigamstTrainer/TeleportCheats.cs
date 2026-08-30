@@ -4,6 +4,7 @@ using BigAmbitions.Items;
 using Buildings;
 using Localizor;
 using Helpers;
+using Streets;
 using UnityEngine;
 
 namespace BigamstTrainer
@@ -132,24 +133,88 @@ namespace BigamstTrainer
             }
         }
 
-        /// <summary>Moves the player to the current quest's target.</summary>
+        /// <summary>
+        /// Moves the player to the current quest's target, bringing the car if driving.
+        ///
+        /// The game's own Command_TeleportPlayerToQuestTarget requires the player to be on
+        /// foot and silently does nothing otherwise — including when no quest is active —
+        /// so the address is read directly and travelled to the same way a map destination
+        /// is. That makes it work while driving and lets a missing target be reported
+        /// rather than looking like a success.
+        /// </summary>
         internal static void ToQuestTarget()
         {
-            if (PlayerHelper.IsUsingVehicle)
-            {
-                _log?.Warn("Leave the vehicle first — quest teleport moves the player only.");
-                return;
-            }
-
             try
             {
-                GameManager.Command_TeleportPlayerToQuestTarget();
-                _log?.Info("Teleported to the current quest target.");
+                UI.Guiders.DirectionGuider guider =
+                    InstanceBehavior<UI.Guiders.GuidersManager>.Instance?.mainQuestGuider;
+                if (guider == null)
+                {
+                    _log?.Warn("No quest target right now.");
+                    return;
+                }
+
+                // Prefer the address: it resolves to a building entrance, which is a
+                // sensible place to arrive.
+                Address address = guider.CurrentAddress;
+                if (address != null && !address.IsUndefined())
+                {
+                    Vector3 entrance = GameManager.GetPlayerPositionBasedOnAddress(address);
+                    if (entrance != Vector3.positiveInfinity)
+                    {
+                        TravelToPosition(entrance, $"quest target at {Describe(address)}");
+                        return;
+                    }
+                }
+
+                // Not every quest points at a building — an early objective can point at a
+                // car — and those have no address to resolve. The guider still knows the
+                // object it is pointing at, so use its position.
+                if (guider.target != null)
+                {
+                    TravelToPosition(guider.target.position, "quest target");
+                    return;
+                }
+
+                _log?.Warn("No quest target right now.");
             }
             catch (Exception exception)
             {
                 _log?.Error($"Quest teleport failed: {exception.Message}");
             }
+        }
+
+        /// <summary>
+        /// Travels to a world position on foot or by car, whichever applies. Shared so
+        /// every destination behaves the same way.
+        /// </summary>
+        private static void TravelToPosition(Vector3 target, string what)
+        {
+            // Nothing extra is needed to bring along what the player is carrying: a
+            // shopping cart is a held item (tag isshoppingcontainer), not a vehicle, and
+            // SetPlayerPosition below runs ExitFromBuildingCoroutine, so the interior is
+            // torn down properly. What teleporting skips is the exit zone's payment gate,
+            // so unpaid goods stay the shop's and are lost along with the interior.
+
+            if (PlayerHelper.IsUsingVehicle)
+            {
+                VehicleController vehicle = InstanceBehavior<GameManager>.Instance?.selectedVehicle;
+                if (vehicle == null)
+                {
+                    _log?.Warn("Driving, but no current vehicle was found.");
+                    return;
+                }
+
+                VehicleHelper.TeleportVehicleToGround(vehicle, target, vehicle.transform.rotation);
+                _log?.Info($"Teleported with vehicle to the {what}.");
+                return;
+            }
+
+            // The coroutine closes the map and leaves any building or underground parking
+            // before warping, which a bare Warp would not do.
+            InstanceBehavior<GameManager>.Instance
+                ?.StartCoroutine(GameManager.SetPlayerPosition(target));
+            _log?.Info($"Teleported to the {what}.");
         }
     }
 }
