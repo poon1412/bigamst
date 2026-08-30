@@ -30,6 +30,9 @@ namespace BigamstTrainer
         private const string PanelName = "BigamstTrainerPanel";
         private const string ButtonName = "BigamstTrainerButton";
 
+        /// <summary>Name of the icon added to the small BizPhone widget.</summary>
+        private const string BizPhoneButtonName = "BigamstTrainerBizPhoneButton";
+
         /// <summary>Where the tab strip sits, and where the scrolling body starts below it.</summary>
         private const float TabBarTop = 24f;
         private const float TopInset = TabBarTop + PhoneUi.TabBarHeight + 24f;
@@ -86,6 +89,8 @@ namespace BigamstTrainer
             _activeTab = 0;
             PhoneUi.Forget();
             GameOptionsRenderer.Forget();
+            PhonePager.Reset();
+            PhoneIcons.Forget();
             _installed = true; // stop any further attempts
             _log = null;
         }
@@ -194,6 +199,7 @@ namespace BigamstTrainer
 
             BuildPanel(_appsContainer);
             BuildButton(template);
+            BuildBizPhoneButton(fullMenu);
             return true;
         }
 
@@ -448,6 +454,116 @@ namespace BigamstTrainer
             catch (Exception)
             {
                 // Cosmetic only; never worth failing the panel over.
+            }
+        }
+
+        /// <summary>
+        /// Adds a Trainer icon to the small BizPhone widget as well.
+        ///
+        /// Without it the trainer can only be reached by opening some other app first and
+        /// then switching tabs, because the widget builds its icons from the game's own
+        /// app list. SmartphoneUI.Awake builds them exactly as FullMenu does, so a live
+        /// button is cloned the same way — the template it builds from stays disabled, and
+        /// the whole widget is hidden while the full menu is open, so neither "is it
+        /// active" nor "is it visible" can identify a real one. The app names do.
+        ///
+        /// Its click opens the full menu and then shows our panel, since that is where the
+        /// panel lives.
+        /// </summary>
+        private static void BuildBizPhoneButton(FullMenu fullMenu)
+        {
+            try
+            {
+                SmartphoneUI phone = InstanceBehavior<UIs>.Instance?.smartphoneUI;
+                if (phone == null)
+                {
+                    _log?.Warn("BizPhone widget not found; its Trainer icon was skipped.");
+                    return;
+                }
+
+                SmartphoneAppButton template = null;
+                foreach (SmartphoneAppButton candidate in
+                         phone.GetComponentsInChildren<SmartphoneAppButton>(includeInactive: true))
+                {
+                    if (candidate != null && Array.IndexOf(RealAppNames, candidate.gameObject.name) >= 0)
+                    {
+                        template = candidate;
+                        break;
+                    }
+                }
+
+                if (template == null)
+                {
+                    _log?.Warn("No BizPhone app icon to clone; its Trainer icon was skipped.");
+                    return;
+                }
+
+                GameObject button = UnityEngine.Object.Instantiate(
+                    template.gameObject, template.transform.parent);
+                button.name = BizPhoneButtonName;
+                button.SetActive(true);
+
+                // Second slot, straight after Persona. Appended at the end it lands on the
+                // widget's second page, which defeats the point of a one-click shortcut.
+                // Found by name rather than assumed to be index 0, so a different app
+                // order still places this correctly.
+                int slot = 1;
+                Transform row = button.transform.parent;
+                for (int i = 0; i < row.childCount; i++)
+                {
+                    if (row.GetChild(i).name == "Persona")
+                    {
+                        slot = i + 1;
+                        break;
+                    }
+                }
+
+                button.transform.SetSiblingIndex(slot);
+
+                foreach (TMP_Text label in button.GetComponentsInChildren<TMP_Text>(includeInactive: true))
+                {
+                    var localized = label.GetComponent<Localizor.LanguageChangeEvent.TextLocalizationComponent>();
+                    if (localized != null)
+                    {
+                        localized.Key = "Trainer";
+                        localized.enabled = false;
+                    }
+
+                    label.text = "Trainer";
+                }
+
+                // The clone carries the source app's badge count; it means nothing here.
+                var badge = button.GetComponent<SmartphoneAppButton>();
+                badge?.UpdateBadgeCount(0);
+
+                // Recolour only: the cloned star reads well as a trainer icon, and the
+                // grey tile was what made this look like a second Persona.
+                PhoneIcons.BuildTile(button, PhoneIcons.TrainerTint, "Icon-Star");
+
+                Button click = button.GetComponent<Button>();
+                if (click != null)
+                {
+                    click.onClick.RemoveAllListeners();
+                    click.onClick.AddListener(() =>
+                    {
+                        // The panel lives inside the full menu, so open that first.
+                        fullMenu.Toggle(show: true);
+                        Show();
+                    });
+                }
+
+                _log?.Info($"Added a Trainer icon to the BizPhone at slot {slot}, " +
+                          $"cloned from '{template.name}'.");
+
+                // The widget has no paging of its own, so a ninth app would simply be
+                // unreachable. Install after the icon exists, since the page count is
+                // fixed from what is present.
+                PhonePager.Install(button.transform.parent, _log);
+            }
+            catch (Exception exception)
+            {
+                // The full-menu button still works; this is an extra shortcut.
+                _log?.Warn($"Could not add the BizPhone icon: {exception.Message}");
             }
         }
 

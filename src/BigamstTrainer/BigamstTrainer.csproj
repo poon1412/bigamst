@@ -67,6 +67,8 @@
     <Reference Include="UnityEngine.UI"       HintPath="$(ManagedDir)\UnityEngine.UI.dll"       Private="false" />
     <Reference Include="Unity.TextMeshPro"    HintPath="$(ManagedDir)\Unity.TextMeshPro.dll"    Private="false" />
     <Reference Include="UnityEngine.UIModule" HintPath="$(ManagedDir)\UnityEngine.UIModule.dll" Private="false" />
+    <!-- TextAnchor, used by the layout groups. -->
+    <Reference Include="UnityEngine.TextRenderingModule" HintPath="$(ManagedDir)\UnityEngine.TextRenderingModule.dll" Private="false" />
     <Reference Include="UnityEngine"          HintPath="$(ManagedDir)\UnityEngine.dll"          Private="false" />
     <Reference Include="UnityEngine.CoreModule" HintPath="$(ManagedDir)\UnityEngine.CoreModule.dll" Private="false" />
   </ItemGroup>
