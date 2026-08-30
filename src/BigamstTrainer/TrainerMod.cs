@@ -20,7 +20,6 @@ namespace BigamstTrainer
     {
         // Option ids become PlayerPrefs keys "m:{modId}:{optionId}". They must stay stable
         // across releases or previously saved values are silently dropped.
-        private const string OptMoneyAmount     = "bigamst.money.amount";
         private const string OptMoneyFloor      = "bigamst.money.floor";
         private const string OptTaxPercent      = "bigamst.econ.tax";
         private const string OptSalaryMult      = "bigamst.econ.salary_mult";
@@ -43,6 +42,12 @@ namespace BigamstTrainer
         private const string OptNoVehicleDamage = "bigamst.vehicle.no_damage";
         private const string OptNoVehicleFuel   = "bigamst.vehicle.no_fuel";
         private const string OptRivalDifficulty = "bigamst.rivals.difficulty";
+        private const string OptGameSpeed       = "bigamst.gameplay.speed";
+        private const string OptCarSpeed        = "bigamst.vehicle.max_speed";
+        private const string OptCarPower        = "bigamst.vehicle.engine_power";
+        private const string OptCarBrakes       = "bigamst.vehicle.brake_force";
+        private const string OptCarTurn         = "bigamst.vehicle.turn_radius";
+        private const string OptCarDamage       = "bigamst.vehicle.damage_intensity";
         private const string OptFreezeClock     = "bigamst.time.freeze";
         private const string OptSetHour         = "bigamst.time.hour";
 
@@ -77,16 +82,7 @@ namespace BigamstTrainer
         private const string LabelPercent  = "{value}%";
         private const string LabelHour     = "{value}:00";
 
-        /// <summary>Choices for the money amount dropdown, paired with <see cref="MoneyAmounts"/>.</summary>
-        private static readonly string[] MoneyAmountChoices =
-        {
-            "$1,000", "$10,000", "$100,000", "$1,000,000", "$10,000,000", "$100,000,000"
-        };
 
-        private static readonly float[] MoneyAmounts =
-        {
-            1_000f, 10_000f, 100_000f, Million, 10f * Million, 100f * Million
-        };
 
         /// <summary>
         /// Last value logged per setting. The options panel re-invokes every callback
@@ -96,6 +92,15 @@ namespace BigamstTrainer
             new System.Collections.Generic.Dictionary<string, object>();
 
         private static IModLogger _log;
+
+        /// <summary>
+        /// The option definition, shared with the phone panel so both surfaces render the
+        /// same list rather than maintaining two of them.
+        /// </summary>
+        internal static ModOptions BuiltOptions { get; private set; }
+
+        internal static string ModId { get; private set; }
+
 
         private bool _keepEnergy;
         private bool _keepHunger;
@@ -108,7 +113,6 @@ namespace BigamstTrainer
         /// <summary>Money is topped back up to this whenever it drops below. 0 disables.</summary>
         private float _moneyFloor;
 
-        private float _selectedMoneyAmount = MoneyAmounts[1];
 
         private bool _freezeClock;
         private int _targetHour = 8;
@@ -124,20 +128,25 @@ namespace BigamstTrainer
         {
             _log = context.Logger;
             BusinessCheats.Initialize(_log);
+            GameplayCheats.Initialize(_log);
+            PhoneApp.Initialize(_log);
             TeleportCheats.Initialize(_log);
 
             var options = new ModOptions()
 
-                .AddHeader("Bigamst Trainer — Money")
-                .AddDropdown(OptMoneyAmount, "Amount", MoneyAmountChoices, 1, OnMoneyAmountChanged)
-                .AddButton("Add the amount above  →", () => AddMoney(_selectedMoneyAmount))
-                .AddButton("Subtract the amount above  →", () => AddMoney(-_selectedMoneyAmount))
+                .AddHeader("Money")
+                .AddButton("Quick add $10,000  →", () => GameplayCheats.ChangeMoney(10_000f))
+                .AddButton("Quick add $100,000  →", () => GameplayCheats.ChangeMoney(100_000f))
+                .AddButton("Quick add $1,000,000  →", () => GameplayCheats.ChangeMoney(Million))
+                // Phone only: the options API has no text field, so an exact amount can
+                // only be typed here. Sits inside Money rather than at the end of the list.
+                .AddCustom(new InlineUiOption(PhoneApp.BuildMoneyInput))
                 .AddSlider(OptMoneyFloor, "Never drop below", 0, 100, 0,
                     value => { _moneyFloor = value * Million; LogSetting("Money floor ($M)", value); }, LabelDollarsM)
                 .AddButton("Pay off all loans  →", ClearLoans)
                 .AddSplitter()
 
-                .AddHeader("Bigamst Trainer — Economy")
+                .AddHeader("Economy")
                 .AddSlider(OptTaxPercent, "Tax rate", 0, 50, 10,
                     value => WithVariables("Tax rate", value, v => v.taxPercentage = value), LabelPercent)
                 .AddSlider(OptSalaryMult, "Employee wages", 0, 200, 100,
@@ -158,7 +167,7 @@ namespace BigamstTrainer
                     value => WithVariables("All courses", value, v => v.allCoursesUnlocked = value))
                 .AddSplitter()
 
-                .AddHeader("Bigamst Trainer — Player")
+                .AddHeader("Player")
                 .AddToggle(OptKeepEnergy,    "Keep energy full",    false, v => { _keepEnergy = v; LogSetting("Keep energy full", v); })
                 .AddToggle(OptKeepHunger,    "Keep hunger full",    false, v => { _keepHunger = v; LogSetting("Keep hunger full", v); })
                 .AddToggle(OptKeepHappiness, "Keep happiness full", false, v => { _keepHappiness = v; LogSetting("Keep happiness full", v); })
@@ -167,9 +176,11 @@ namespace BigamstTrainer
                 .AddToggle(OptNoEnergyDrain, "Disable energy system entirely", false,
                     value => WithVariables("Disable energy system", value, v => v.disableEnergy = value))
                 .AddButton("Restore energy, hunger and happiness  →", RestoreAllStats)
+                .AddButton("Unlock all courses  →", GameplayCheats.UnlockAllCourses)
+                .AddButton("Get 1 year younger  →", () => GameplayCheats.ChangeAge(-1f))
                 .AddSplitter()
 
-                .AddHeader("Bigamst Trainer — Businesses")
+                .AddHeader("Businesses")
                 .AddButton("Restock every shelf and fridge  →", () => BusinessCheats.RestockEverything())
                 .AddToggle(OptAutoRestock, "Keep everything restocked", false, v => { _autoRestock = v; LogSetting("Auto restock", v); })
                 .AddButton("Mark all stock as paid for  →", BusinessCheats.MarkStockPaid)
@@ -185,7 +196,7 @@ namespace BigamstTrainer
                 })
                 .AddSplitter()
 
-                .AddHeader("Bigamst Trainer — Employees")
+                .AddHeader("Employees")
                 .AddToggle(OptKeepStaffHappy, "Keep all employees fully satisfied", false,
                     v => { _keepStaffSatisfied = v; LogSetting("Keep staff satisfied", v); })
                 .AddButton("Satisfy all employees now  →", SatisfyAllEmployees)
@@ -193,28 +204,57 @@ namespace BigamstTrainer
                 .AddButton("Max out every employee skill  →", BusinessCheats.MaxEmployeeSkills)
                 .AddSplitter()
 
-                .AddHeader("Bigamst Trainer — Vehicles")
+                .AddHeader("Vehicles")
                 .AddToggle(OptNoVehicleDamage, "Disable vehicle damage", false,
                     value => WithVariables("Disable vehicle damage", value, v => v.disableVehicleDamage = value))
                 .AddToggle(OptNoVehicleFuel, "Disable fuel consumption", false,
                     value => WithVariables("Disable fuel use", value, v => v.disableVehicleFuel = value))
                 .AddButton("Repair, refuel and clean all  →", ServiceAllVehicles)
                 .AddButton("Clear parking tickets and fines  →", ClearParkingFines)
+                .AddButton("Repair the vehicle you are in  →", GameplayCheats.RepairCurrentVehicle)
+                .AddButton("Refuel the vehicle you are in  →", GameplayCheats.RefuelCurrentVehicle)
+                .AddSlider(OptCarSpeed, "Tune: max speed", 0, 400, 160, GameplayCheats.SetMaxSpeed)
+                .AddSlider(OptCarPower, "Tune: engine power", 0, 1000, 200, GameplayCheats.SetEnginePower)
+                .AddSlider(OptCarBrakes, "Tune: brake force", 0, 1000, 200, GameplayCheats.SetBrakeForce)
+                .AddSlider(OptCarTurn, "Tune: turn radius", 1, 90, 35, GameplayCheats.SetTurnRadius)
+                .AddSlider(OptCarDamage, "Tune: damage taken", 0, 100, 100, GameplayCheats.SetDamageIntensity, LabelPercent)
                 .AddSplitter()
 
-                .AddHeader("Bigamst Trainer — Rivals")
+                .AddHeader("Rivals")
                 .AddSlider(OptRivalDifficulty, "Rival difficulty", 0, 200, 100,
                     value => WithVariables("Rival difficulty", value, v => v.rivalsDifficultyMultiplier = value / 100f), LabelPercent)
                 .AddButton("Defeat all rivals  →", DefeatAllRivals)
                 .AddSplitter()
 
-                .AddHeader("Bigamst Trainer — Teleport")
+                .AddHeader("Gameplay")
+                .AddSlider(OptGameSpeed, "Game speed", 0, 500, 100,
+                    GameplayCheats.SetGameSpeed, LabelPercent)
+                .AddButton("Skip 1 hour  →", () => GameplayCheats.SkipTime("1h"))
+                .AddButton("Skip 8 hours  →", () => GameplayCheats.SkipTime("8h"))
+                .AddButton("Skip 1 day  →", () => GameplayCheats.SkipTime("1d"))
+                .AddButton("Complete current objective  →", GameplayCheats.CompleteObjective)
+                .AddButton("Complete current quest  →", GameplayCheats.CompleteQuest)
+                .AddButton("Spawn 10 customers here  →", () => GameplayCheats.SpawnCustomers(10))
+                // The game's Toggle* commands flip state with no getter, so these stay
+                // buttons: an option toggle would flip them again on every panel rebuild.
+                .AddButton("Toggle traffic  →", GameplayCheats.ToggleTraffic)
+                .AddButton("Toggle pedestrians  →", GameplayCheats.TogglePedestrians)
+                .AddButton("Toggle seasonal item limits  →", GameplayCheats.ToggleSeasonRestrictions)
+                .AddButton("Toggle invincibility  →", GameplayCheats.ToggleInvincibility)
+                .AddSplitter()
+
+                .AddHeader("Spawn")
+                .AddCustom(new InlineUiOption(PhoneApp.BuildItemSpawner))
+                .AddSplitter()
+
+                .AddHeader("Teleport")
                 .AddButton("Go to map destination  →", TeleportCheats.ToDestination)
                 .AddButton("Go inside map destination  →", TeleportCheats.InsideDestination)
                 .AddButton("Go to quest target  →", TeleportCheats.ToQuestTarget)
+                .AddButton("Go to the casino  →", GameplayCheats.GoToCasino)
                 .AddSplitter()
 
-                .AddHeader("Bigamst Trainer — Time")
+                .AddHeader("Time")
                 .AddToggle(OptFreezeClock, "Freeze the clock", false, OnFreezeClockChanged)
                 // The slider only records the target. Applying it directly would move the
                 // clock every time the panel is built, because ModOptionsSliderControl
@@ -226,6 +266,8 @@ namespace BigamstTrainer
                 // panel finished rebuilding, and by then every button above exists.
                 .AddCustom(new ButtonLabelFixer.HookOption());
 
+            BuiltOptions = options;
+            ModId = context.ModId;
             OptionsService.Register(context.ModId, options);
 
             UnityLifecycleProvider.OnUpdate += OnUpdate;
@@ -243,8 +285,12 @@ namespace BigamstTrainer
                 _tickSubscribed = false;
             }
 
+            BuiltOptions = null;
+            ModId = null;
             _log?.Info("Bigamst Trainer unloading.");
             BusinessCheats.Reset();
+            GameplayCheats.Reset();
+            PhoneApp.Reset();
             TeleportCheats.Reset();
             LastApplied.Clear();
             ButtonLabelFixer.Reset();
@@ -260,6 +306,9 @@ namespace BigamstTrainer
         {
             // Two field reads unless the options panel was rebuilt since the last frame.
             ButtonLabelFixer.ProcessPendingRebuild();
+
+            // One bool check once the phone app is installed.
+            PhoneApp.Tick();
 
             GameInstance game = SaveGameManager.Current;
             if (game == null)
@@ -366,13 +415,7 @@ namespace BigamstTrainer
             }
         }
 
-        private void OnMoneyAmountChanged(int index)
-        {
-            if (index >= 0 && index < MoneyAmounts.Length)
-            {
-                _selectedMoneyAmount = MoneyAmounts[index];
-            }
-        }
+
 
         private void OnFreezeClockChanged(bool enabled)
         {
@@ -425,6 +468,15 @@ namespace BigamstTrainer
 
             _log?.Info($"Time set to day {game.Day}, {_targetHour:00}:00.");
         }
+
+        // Exposed so the phone panel drives the same code paths as the Options menu
+        // rather than duplicating them.
+        internal static readonly System.Action ClearLoansAction = ClearLoans;
+        internal static readonly System.Action RestoreAllStatsAction = RestoreAllStats;
+        internal static readonly System.Action SatisfyAllEmployeesAction = () => SatisfyAllEmployees();
+        internal static readonly System.Action ClearAbsencesAction = ClearAbsences;
+        internal static readonly System.Action ServiceAllVehiclesAction = ServiceAllVehicles;
+        internal static readonly System.Action DefeatAllRivalsAction = DefeatAllRivals;
 
         private static void AddMoney(float amount)
         {
