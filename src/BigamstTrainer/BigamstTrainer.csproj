@@ -11,7 +11,7 @@
     <AssemblyName>BigamstTrainer</AssemblyName>
     <RootNamespace>BigamstTrainer</RootNamespace>
     <LangVersion>latest</LangVersion>
-    <Version>0.9.0</Version>
+    <Version>0.10.0</Version>
 
     <!-- The mod loader rejects a mod folder containing more than one DLL,
          so nothing may be copied alongside our assembly. -->

@@ -75,10 +75,24 @@ namespace BigamstTrainer
 
             Transform root = _pendingRoot;
             _pendingRoot = null;
+            RelabelUnder(root);
+        }
+
+        /// <summary>
+        /// Relabels every option button beneath <paramref name="root"/>. The phone panel
+        /// spawns its own controls, so it has to ask for this explicitly rather than
+        /// relying on the options panel rebuild hook.
+        /// </summary>
+        internal static void RelabelUnder(Transform root)
+        {
+            if (root == null || _failed)
+            {
+                return;
+            }
 
             try
             {
-                // Scoped to the panel's content root, never the whole scene.
+                // Scoped to the given content root, never the whole scene.
                 foreach (ModOptionsButtonControl control in
                          root.GetComponentsInChildren<ModOptionsButtonControl>(includeInactive: true))
                 {

@@ -6,6 +6,8 @@ DLL, and the game draws the menu itself.
 
 Built and tested against **EA 0.11, Build 3670**.
 
+Current version: **0.10.0**.
+
 ## Install
 
 1. Open `%LOCALAPPDATA%Low\Hovgaard Games\Big Ambitions\ModsLocal\`
@@ -40,13 +42,26 @@ game only stores that state for Steam Workshop items, so it is greyed out and al
 as on. Deleting the folder is the supported way to remove a local mod. To disable it
 temporarily, move the folder somewhere outside `ModsLocal`.
 
+## Two ways in
+
+**In game — the phone.** Open your phone and pick **Trainer**, at the end of the app row.
+Everything is reachable while you play, without pausing.
+
+**From the menu — Options → MODS.** The same controls, and the only surface that works
+before a save is loaded. If the phone app ever fails to appear after a game update, this
+one keeps working.
+
+Both are built from the same list, so they never disagree. Toggles, sliders and dropdowns
+remember their values between sessions.
+
+The phone adds two things the menu cannot show, because the game's mod options have no text
+field: an exact money amount, and the item spawner.
+
 ## Features
 
-Everything lives under **Options → MODS** and is grouped by category. Toggles, sliders and
-dropdowns remember their values between sessions.
-
 ### Money
-- Pick an amount ($1,000 up to $100,000,000), then **Add** or **Subtract**
+- **Quick add** $10,000, $100,000 or $1,000,000
+- **Exact amount** *(phone only)* — type a figure, then **Add**, **Subtract** or **Set**
 - **Never drop below** — tops your balance back up whenever it falls under the set figure
 - **Pay off all loans** — clears every outstanding balance and its daily interest
 
@@ -68,24 +83,49 @@ This lets you change them mid-game.
 
 ### Player
 Keep energy, hunger and happiness full; disable aging; disable the energy system entirely;
-restore all three at once.
+restore all three at once. Unlock all courses, and complete or clear all personal goals.
+
+**Completing all goals** marks them done straight away, but **Steam achievements for goals
+you had not genuinely earned only appear after you reload the save** — the game grants those
+during its own check on load, and the trainer cannot trigger it sooner.
 
 ### Employees
 Keep everyone fully satisfied, clear absences and sick days, max out every skill.
 
 ### Vehicles
 Disable damage and fuel use; repair, refuel and clean everything you own; clear parking
-tickets and fines.
+tickets and fines. Repair or refuel just the car you are sitting in.
+
+**Tuning** applies to one car at a time — the one you are sitting in. Set max speed, engine
+power, brake force, turn radius and damage taken, then press **Apply tuning to the car you
+are in**. Nothing changes until you press it, so each car keeps its own settings. Damage at
+0% means walls stop mattering.
+
+Some vehicles have no speed limiter or damage module and the game will say so; that is
+normal, not a failure.
+
+### Gameplay
+Game speed from 0 to 500%. Skip an hour, eight hours or a day. Complete the current
+objective or quest. Spawn customers into the business you are standing in. Toggle traffic,
+pedestrians, seasonal item limits and invincibility.
+
+### Utility
+*(phone only)* Start typing an item name and pick from the suggestions — search matches the
+readable name, so "bread" finds it without knowing that its id is `ba:itemname_bread`. The
+item appears in your hands, so you need empty hands, no vehicle and no placement mode.
+
+**Reset all settings** lives here too. It clears this mod's saved values so every control
+returns to its default — it does not undo cheats already applied to your save.
 
 ### Rivals
 Adjust rival difficulty, or defeat all rivals outright — which shuts down their businesses
 and sells off their real estate, not just marks them beaten.
 
 ### Teleport
-Jump to the destination you marked on the city map, go straight inside it, or travel to your
-current quest target. **If you are driving, your car comes with you** — it lands at the
-building's entrance, or its drive-in entrance where one exists, with its physics reset
-properly.
+Jump to the destination you marked on the city map, go straight inside it, travel to your
+current quest target, or head to the casino. **If you are driving, your car comes with you**
+— it lands at the building's entrance, or its drive-in entrance where one exists, with its
+physics reset properly.
 
 ### Time
 Freeze the clock, or jump to a chosen hour. Jumping to an earlier hour moves you to the next
@@ -93,19 +133,17 @@ day rather than rewinding the current one.
 
 ## Known issues
 
-This is a **0.9 beta**. Everything below has been exercised on a real save, but only by one
-person on one machine — please report anything odd.
+This is a **0.10 beta**. Everything here has been used on a real save, but only by one person
+on one machine — please report anything odd.
 
-- **Buttons in the mod menu are captioned "Apply".** The game's mod UI never sets a caption
-  on mod buttons, leaving a placeholder ("YOUR TEXT HERE") — this mod overwrites it. The row
-  label to the left says what each button does.
-- **"Defeat all rivals" has not been tested against active rivals.** It calls the game's own
-  `RivalsHelper.DefeatRival`, which shuts down their businesses and sells their real estate,
-  but no save with live rivals has run it yet.
+- **Buttons are captioned "Apply".** The game's mod UI never sets a caption on mod buttons,
+  leaving a placeholder — this mod overwrites it. The label to the left of each button says
+  what it does.
 - **Freeze the clock is experimental.** Stopping time is the most invasive thing here and may
   interact badly with deliveries, shifts or rent. Try it on a save you do not mind losing.
-- **Teleporting while driving** moves the car with you and resets its physics. It lands at
-  the building's entrance, or its drive-in entrance where one exists.
+- **The phone app depends on internals.** It borrows the game's own option controls and app
+  button, which a future patch could rename. If the Trainer app stops appearing, everything
+  is still available under Options → MODS, and the log will say what it could not find.
 
 ## Building
 
