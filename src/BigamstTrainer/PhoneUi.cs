@@ -436,10 +436,9 @@ namespace BigamstTrainer
         /// value in the field and hands it to <paramref name="onPick"/>.
         /// </summary>
         internal static bool CreateSearchRow(
-            Transform parent, string label, string placeholder, string buttonText,
+            Transform parent, string label, string placeholder,
             Func<string, List<(string Value, string Label)>> search,
-            Action<string> onSubmit,
-            int maxSuggestions = 6)
+            params (string Text, Action<string> OnClick)[] buttons)
         {
             TMP_InputField source = FindInputFieldTemplate();
             if (source == null)
@@ -494,12 +493,16 @@ namespace BigamstTrainer
 
             field.pointSize = InputFontSize;
 
-            Button go = CreateButton(row, buttonText, () => onSubmit?.Invoke(field.text));
-            UnityEngine.Object.Destroy(go.GetComponent<LayoutElement>());
-            go.gameObject.AddComponent<LayoutElement>().flexibleWidth = 1f;
-            foreach (TMP_Text text in go.GetComponentsInChildren<TMP_Text>())
+            foreach ((string caption, Action<string> action) in buttons)
             {
-                text.alignment = TextAlignmentOptions.Center;
+                Action<string> handler = action;
+                Button go = CreateButton(row, caption, () => handler?.Invoke(field.text));
+                UnityEngine.Object.Destroy(go.GetComponent<LayoutElement>());
+                go.gameObject.AddComponent<LayoutElement>().flexibleWidth = 1f;
+                foreach (TMP_Text text in go.GetComponentsInChildren<TMP_Text>())
+                {
+                    text.alignment = TextAlignmentOptions.Center;
+                }
             }
 
             // Suggestions live in their own column so they can grow and shrink without
@@ -531,14 +534,13 @@ namespace BigamstTrainer
                     string chosen = value;
                     Button option = CreateButton(suggestions, caption + "   (" + value + ")", () =>
                     {
-                        // Fill the field so the choice is visible, then act on it.
+                        // Only fill the field: the row may offer several actions, and a
+                        // mis-click should not trigger one of them.
                         field.SetTextWithoutNotify(chosen);
                         for (int i = suggestions.childCount - 1; i >= 0; i--)
                         {
                             UnityEngine.Object.Destroy(suggestions.GetChild(i).gameObject);
                         }
-
-                        onSubmit?.Invoke(chosen);
                     });
 
                     LayoutElement element = option.GetComponent<LayoutElement>();

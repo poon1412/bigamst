@@ -382,9 +382,10 @@ namespace BigamstTrainer
                 ("Save", GameplayCheats.AddWaypoint));
 
             bool go = PhoneUi.CreateSearchRow(
-                parent, "Go to a saved spot", "start typing, or leave blank", "Go",
+                parent, "Saved spots", "start typing, or leave blank",
                 query => GameplayCheats.SearchWaypoints(query, limit: 8),
-                GameplayCheats.TeleportToWaypoint);
+                ("Go", GameplayCheats.TeleportToWaypoint),
+                ("Delete", GameplayCheats.RemoveWaypoint));
 
             if (!saved || !go)
             {
@@ -396,9 +397,9 @@ namespace BigamstTrainer
         internal static void BuildItemSpawner(Transform parent)
         {
             bool built = PhoneUi.CreateSearchRow(
-                parent, "Item", "start typing, e.g. bread", "Spawn",
+                parent, "Item", "start typing, e.g. bread",
                 query => GameplayCheats.SearchItems(query, limit: 6),
-                value => GameplayCheats.SpawnItem(value));
+                ("Spawn", value => GameplayCheats.SpawnItem(value)));
 
             if (!built)
             {

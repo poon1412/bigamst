@@ -218,9 +218,56 @@ namespace BigamstTrainer
 
         // ---- Personal goals ------------------------------------------------------
 
-        internal static void CompleteAllPersonalGoals() =>
-            Run("Completed all personal goals",
+        /// <summary>
+        /// Marks every personal goal complete.
+        ///
+        /// The game's own command only writes the id list; the private SetCompleted, which
+        /// fires the completion popup, the happiness modifier and the Steam achievement,
+        /// runs solely from CheckForCompletion when a goal is genuinely met. So each goal
+        /// is offered a real check first — anything you have actually earned unlocks now —
+        /// and the rest are filled in. Those remaining achievements appear when the save is
+        /// next loaded, which is when the game re-checks them itself.
+        /// </summary>
+        internal static void CompleteAllPersonalGoals()
+        {
+            int earned = 0;
+
+            try
+            {
+                List<GenericPersonalGoal> goals =
+                    InstanceBehavior<GameManager>.Instance?.personalGoals;
+                if (goals != null)
+                {
+                    foreach (GenericPersonalGoal goal in goals)
+                    {
+                        if (goal == null || goal.IsCompleted)
+                        {
+                            continue;
+                        }
+
+                        try
+                        {
+                            goal.CheckForCompletion();
+                            if (goal.IsCompleted)
+                            {
+                                earned++;
+                            }
+                        }
+                        catch (Exception)
+                        {
+                            // One goal's own check failing must not stop the rest.
+                        }
+                    }
+                }
+            }
+            catch (Exception exception)
+            {
+                _log?.Warn($"Goal check pass failed: {exception.Message}");
+            }
+
+            Run($"Completed all personal goals ({earned} unlocked now, the rest on next load)",
                 UI.Smartphone.Apps.Persona.PersonalGoalsUI.Command_CompleteAll);
+        }
 
         internal static void ResetPersonalGoals() =>
             Run("Cleared all completed personal goals",

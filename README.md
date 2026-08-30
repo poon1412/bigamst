@@ -6,6 +6,8 @@ DLL, and the game draws the menu itself.
 
 Built and tested against **EA 0.11, Build 3670**.
 
+Current version: **0.10.0**.
+
 ## Install
 
 1. Open `%LOCALAPPDATA%Low\Hovgaard Games\Big Ambitions\ModsLocal\`
@@ -81,7 +83,11 @@ This lets you change them mid-game.
 
 ### Player
 Keep energy, hunger and happiness full; disable aging; disable the energy system entirely;
-restore all three at once.
+restore all three at once. Unlock all courses, and complete or clear all personal goals.
+
+**Completing all goals** marks them done straight away, but **Steam achievements for goals
+you had not genuinely earned only appear after you reload the save** — the game grants those
+during its own check on load, and the trainer cannot trigger it sooner.
 
 ### Employees
 Keep everyone fully satisfied, clear absences and sick days, max out every skill.
@@ -127,7 +133,7 @@ day rather than rewinding the current one.
 
 ## Known issues
 
-This is a **0.9 beta**. Everything here has been used on a real save, but only by one person
+This is a **0.10 beta**. Everything here has been used on a real save, but only by one person
 on one machine — please report anything odd.
 
 - **Buttons are captioned "Apply".** The game's mod UI never sets a caption on mod buttons,

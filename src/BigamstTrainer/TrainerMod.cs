@@ -309,7 +309,6 @@ namespace BigamstTrainer
                 .AddButton("Go to the casino  →", GameplayCheats.GoToCasino)
                 // Phone only: naming and choosing a waypoint both need text entry.
                 .AddCustom(new InlineUiOption(PhoneApp.BuildWaypoints))
-                .AddButton("Forget all saved spots  →", GameplayCheats.ClearWaypoints)
 
                 .AddSplitter()
                 .AddHeader("Utility")
