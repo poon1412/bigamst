@@ -3,7 +3,7 @@
 A trainer mod for [Big Ambitions](https://store.steampowered.com/app/1331550/Big_Ambitions/),
 built on the game's **own mod API** — no BepInEx, no injectors, no dependency folder.
 
-**Version 0.10.0.** Tested against EA 0.11, Build 3670.
+**Version 0.10.1.** Tested against EA 0.11, Build 3670.
 
 ## Install
 
@@ -33,8 +33,8 @@ out and always shows as on.
 
 ## Two ways in
 
-**The phone.** Open your phone in game and pick **Trainer**, at the end of the app row.
-Everything is reachable while you play, laid out in tabs.
+**The phone.** A **Trainer** icon sits on your phone, right after Persona — one click and
+you are in. Everything is reachable while you play, laid out in tabs.
 
 **Options → MODS.** The same controls, and the only surface that works before a save is
 loaded.

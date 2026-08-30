@@ -217,7 +217,7 @@ namespace BigamstTrainer
                 label.fontSize = isActive ? 22f : 20f;
                 label.color = isActive ? BodyColour : new Color(0.62f, 0.66f, 0.72f, 1f);
                 label.alignment = TextAlignmentOptions.Center;
-                label.enableWordWrapping = false;
+                label.textWrappingMode = TextWrappingModes.NoWrap;
                 label.overflowMode = TextOverflowModes.Ellipsis;
 
                 if (!isActive)
@@ -260,7 +260,7 @@ namespace BigamstTrainer
             label.fontSize = size;
             label.color = colour;
             label.alignment = TextAlignmentOptions.MidlineLeft;
-            label.enableWordWrapping = false;
+            label.textWrappingMode = TextWrappingModes.NoWrap;
             label.overflowMode = TextOverflowModes.Ellipsis;
 
             var element = rect.gameObject.AddComponent<LayoutElement>();
@@ -314,7 +314,7 @@ namespace BigamstTrainer
             label.color = Color.white;
             label.fontStyle = FontStyles.Bold;
             label.alignment = TextAlignmentOptions.Center;
-            label.enableWordWrapping = false;
+            label.textWrappingMode = TextWrappingModes.NoWrap;
             label.overflowMode = TextOverflowModes.Ellipsis;
 
             return button;
