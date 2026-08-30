@@ -3,7 +3,7 @@
 A trainer mod for [Big Ambitions](https://store.steampowered.com/app/1331550/Big_Ambitions/),
 built on the game's **own mod API** — no BepInEx, no injectors, no dependency folder.
 
-**Version 0.10.1.** Tested against EA 0.11, Build 3670.
+**Version 0.10.2.** Tested against EA 0.11, Build 3670.
 
 ## Install
 
@@ -121,6 +121,10 @@ report anything odd.
   interact badly with deliveries, shifts or rent. Try it on a save you do not mind losing.
 - **Some vehicles have no speed limiter or damage module**, and the game says so when tuning
   them. That is normal.
+- **Pay before teleporting out of a shop.** Teleporting leaves the building properly, but
+  it skips the exit check that normally stops you leaving with unpaid goods. Anything you
+  have not paid for is still the shop's, so it does not come with you. Paid items, held
+  ones included, travel fine.
 - **The phone app relies on game internals** a future patch could rename. If the Trainer app
   stops appearing, everything is still under Options → MODS.
 
