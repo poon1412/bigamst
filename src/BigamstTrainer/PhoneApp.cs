@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using BAModAPI;
+using BigAmbitions.Mods;
 using TMPro;
 using UI;
 using UI.Smartphone;
@@ -28,6 +30,10 @@ namespace BigamstTrainer
         private const string PanelName = "BigamstTrainerPanel";
         private const string ButtonName = "BigamstTrainerButton";
 
+        /// <summary>Where the tab strip sits, and where the scrolling body starts below it.</summary>
+        private const float TabBarTop = 24f;
+        private const float TopInset = TabBarTop + PhoneUi.TabBarHeight + 24f;
+
         /// <summary>
         /// GameObject names FullMenu gives its real app buttons, from AppName.ToStringFast.
         /// Used to tell a genuine button apart from the disabled prefab template.
@@ -45,6 +51,10 @@ namespace BigamstTrainer
         private static IModLogger _log;
         private static GameObject _panel;
         private static Transform _appsContainer;
+        private static RectTransform _content;
+        private static RectTransform _tabBar;
+        private static RectTransform _panelRect;
+        private static int _activeTab;
         private static float _retryTimer;
         private static int _attempts;
         private static bool _installed;
@@ -70,6 +80,10 @@ namespace BigamstTrainer
             }
 
             _appsContainer = null;
+            _content = null;
+            _tabBar = null;
+            _panelRect = null;
+            _activeTab = 0;
             PhoneUi.Forget();
             GameOptionsRenderer.Forget();
             _installed = true; // stop any further attempts
@@ -221,6 +235,120 @@ namespace BigamstTrainer
             }
         }
 
+        /// <summary>
+        /// Fills the panel from the shared option list.
+        ///
+        /// Run on every open, not just once: each surface spawns its own controls, and a
+        /// control only reads its stored value in Initialize. Without rebuilding, a
+        /// setting changed in the Options menu would still show its old state here.
+        /// </summary>
+        private static void RebuildContent()
+        {
+            if (_content == null)
+            {
+                return;
+            }
+
+            for (int i = _content.childCount - 1; i >= 0; i--)
+            {
+                UnityEngine.Object.Destroy(_content.GetChild(i).gameObject);
+            }
+
+            List<Section> sections = BuildSections();
+            if (sections.Count > 0)
+            {
+                _activeTab = Mathf.Clamp(_activeTab, 0, sections.Count - 1);
+
+                if (_tabBar != null)
+                {
+                    UnityEngine.Object.Destroy(_tabBar.gameObject);
+                }
+
+                var names = new string[sections.Count];
+                for (int i = 0; i < sections.Count; i++)
+                {
+                    names[i] = sections[i].Title;
+                }
+
+                _tabBar = PhoneUi.CreateTabBar(_panelRect, TabBarTop, names, _activeTab, index =>
+                {
+                    _activeTab = index;
+                    RebuildContent();
+                });
+            }
+
+            IEnumerable<ModOption> visible = sections.Count > 0
+                ? (IEnumerable<ModOption>)sections[_activeTab].Options
+                : TrainerMod.BuiltOptions?.Options;
+
+            int spawned = GameOptionsRenderer.Render(_content, visible, TrainerMod.ModId);
+            if (spawned > 0)
+            {
+                // These buttons carry the same "Your text here" placeholder as the ones in
+                // the Options menu, and nothing spawns them through the rebuild hook.
+                ButtonLabelFixer.RelabelUnder(_content);
+            }
+            else
+            {
+                _log?.Warn("Game option prefabs unavailable; using the built-in button list.");
+                PopulateContent(_content);
+            }
+        }
+
+        /// <summary>One tab: a header from the shared list, and the options beneath it.</summary>
+        private sealed class Section
+        {
+            internal string Title;
+            internal readonly List<ModOption> Options = new List<ModOption>();
+        }
+
+        /// <summary>
+        /// Splits the shared option list at its headers, turning each section into a tab.
+        /// The header itself is dropped, since the tab already names it.
+        /// </summary>
+        private static List<Section> BuildSections()
+        {
+            var sections = new List<Section>();
+            ModOptions all = TrainerMod.BuiltOptions;
+            if (all == null)
+            {
+                return sections;
+            }
+
+            Section current = null;
+            foreach (ModOption option in all.Options)
+            {
+                if (TrainerMod.MenuOnlyOptions.Contains(option))
+                {
+                    continue;
+                }
+
+                if (option is HeaderOption header)
+                {
+                    current = new Section { Title = header.Label };
+                    sections.Add(current);
+                    continue;
+                }
+
+                // A splitter only separated sections that are now separate tabs.
+                if (option is SplitterOption || current == null)
+                {
+                    continue;
+                }
+
+                current.Options.Add(option);
+            }
+
+            return sections;
+        }
+
+        /// <summary>Clears saved values and redraws, so the panel shows the defaults.</summary>
+        internal static void ResetToDefaults()
+        {
+            TrainerMod.ClearSavedOptionValues();
+            RebuildContent();
+        }
+
         /// <summary>Typed money amount, with add, subtract and set.</summary>
         internal static void BuildMoneyInput(Transform parent)
         {
@@ -318,25 +446,11 @@ namespace BigamstTrainer
             rect.offsetMax = Vector2.zero;
 
             PhoneUi.PaintBackground(rect);
-            AddHeading(rect, "Bigamst Trainer");
 
-            RectTransform content = PhoneUi.CreateScrollBody(rect, topInset: 110f);
-
-            // Prefer the game's own option controls: they match the rest of the UI, and
-            // bring sliders, toggles and dropdowns with persistence already handled.
-            int spawned = GameOptionsRenderer.Render(content, TrainerMod.BuiltOptions, TrainerMod.ModId);
-            if (spawned > 0)
-            {
-                // These buttons carry the same "Your text here" placeholder as the ones in
-                // the Options menu, and nothing spawns them through the rebuild hook.
-                ButtonLabelFixer.RelabelUnder(content);
-                _log?.Info($"Trainer panel built from {spawned} game option control(s).");
-            }
-            else
-            {
-                _log?.Warn("Game option prefabs unavailable; using the built-in button list.");
-                PopulateContent(content);
-            }
+            // The menu header already shows the app name, so no title is drawn here.
+            _panelRect = rect;
+            _content = PhoneUi.CreateScrollBody(rect, topInset: TopInset);
+            RebuildContent();
 
             _panel.SetActive(false);
         }
@@ -436,6 +550,9 @@ namespace BigamstTrainer
             {
                 child.gameObject.SetActive(child.gameObject == _panel);
             }
+
+            // Pick up anything changed from the Options menu since this was last open.
+            RebuildContent();
 
             var group = _panel.GetComponent<CanvasGroup>();
             if (group != null)

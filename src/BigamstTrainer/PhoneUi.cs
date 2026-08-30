@@ -22,6 +22,21 @@ namespace BigamstTrainer
         private static readonly Color ButtonPressed   = new Color(0.16f, 0.20f, 0.26f, 1f);
         private static readonly Color HeadingColour   = new Color(0.62f, 0.78f, 1f, 1f);
         private static readonly Color BodyColour      = new Color(0.92f, 0.94f, 0.96f, 1f);
+        private static readonly Color CardBackground  = new Color(0.14f, 0.16f, 0.20f, 0.55f);
+
+        /// <summary>
+        /// Widest the content column is allowed to get. Beyond this a row's label and its
+        /// control drift so far apart that they stop reading as one line.
+        /// </summary>
+        private const float MaxColumnWidth = 1150f;
+
+        /// <summary>Share of the screen the column uses when that is narrower than the cap.</summary>
+        private const float ColumnFraction = 0.66f;
+
+        private const float CardPadding = 28f;
+
+        /// <summary>Height of the tab strip, matching the game's app headers.</summary>
+        internal const float TabBarHeight = 46f;
 
         /// <summary>Height of an interactive row, shared so nothing overlaps.</summary>
         private const float RowHeight = 44f;
@@ -34,10 +49,26 @@ namespace BigamstTrainer
 
         private const float InputFontSize = 20f;
 
+        /// <summary>Name given to cloned fields, so they are never taken as a template.</summary>
+        private const string InputName = "Input";
+
         /// <summary>Borrowed from live UI the first time it is needed.</summary>
         private static TMP_FontAsset _font;
 
-        internal static void Forget() => _font = null;
+        /// <summary>
+        /// The field cloned for every text row, resolved once.
+        ///
+        /// It must not be re-resolved per rebuild: by then this panel's own clones are in
+        /// the scene, and on a rebuild they are pending destruction — cloning one of those
+        /// yields nothing and the row silently vanishes.
+        /// </summary>
+        private static TMP_InputField _inputTemplate;
+
+        internal static void Forget()
+        {
+            _font = null;
+            _inputTemplate = null;
+        }
 
         /// <summary>
         /// Finds a font already in use by the game's UI. Creating text without one
@@ -82,16 +113,34 @@ namespace BigamstTrainer
             mask.color = new Color(0f, 0f, 0f, 0.001f); // RectMask2D needs no image, Mask does
             viewport.gameObject.AddComponent<RectMask2D>();
 
+            // A full-width row puts its label at the far left and its control at the far
+            // right, leaving a large empty middle on a wide monitor. Keep the content in a
+            // centred column of a readable width instead, as the game's own apps do.
+            float column = Mathf.Min(MaxColumnWidth, Screen.width * ColumnFraction);
+
             RectTransform content = NewRect("Content", viewport);
-            content.anchorMin = new Vector2(0f, 1f);
-            content.anchorMax = new Vector2(1f, 1f);
+            content.anchorMin = new Vector2(0.5f, 1f);
+            content.anchorMax = new Vector2(0.5f, 1f);
             content.pivot = new Vector2(0.5f, 1f);
-            content.offsetMin = Vector2.zero;
-            content.offsetMax = Vector2.zero;
+            content.anchoredPosition = Vector2.zero;
+            content.sizeDelta = new Vector2(column, 0f);
+
+            // Sits behind the column so the panel reads as a card rather than loose rows
+            // floating on the background.
+            RectTransform card = NewRect("Card", viewport);
+            card.anchorMin = new Vector2(0.5f, 0f);
+            card.anchorMax = new Vector2(0.5f, 1f);
+            card.pivot = new Vector2(0.5f, 0.5f);
+            card.anchoredPosition = Vector2.zero;
+            card.sizeDelta = new Vector2(column + 2f * CardPadding, 0f);
+            card.SetAsFirstSibling();
+            Image cardImage = card.gameObject.AddComponent<Image>();
+            cardImage.color = CardBackground;
+            cardImage.raycastTarget = false;
 
             var layout = content.gameObject.AddComponent<VerticalLayoutGroup>();
-            layout.spacing = 6f;
-            layout.padding = new RectOffset(0, 12, 0, 12);
+            layout.spacing = 8f;
+            layout.padding = new RectOffset(0, 0, 8, 24);
             layout.childControlWidth = true;
             // Must be true: with it off, children keep their own height and a cloned
             // control (the text field) overlaps the row beneath it.
@@ -111,6 +160,80 @@ namespace BigamstTrainer
             scroll.scrollSensitivity = 30f;
 
             return content;
+        }
+
+        /// <summary>
+        /// A row of tabs matching the game's own apps: the active one is bright with an
+        /// underline, the rest are dimmed. Returns the container so it can be rebuilt.
+        /// </summary>
+        internal static RectTransform CreateTabBar(
+            RectTransform panel, float top, string[] labels, int active, Action<int> onSelect)
+        {
+            RectTransform bar = NewRect("Tabs", panel);
+            bar.anchorMin = new Vector2(0f, 1f);
+            bar.anchorMax = new Vector2(1f, 1f);
+            bar.pivot = new Vector2(0.5f, 1f);
+            bar.offsetMin = new Vector2(40f, -(top + TabBarHeight));
+            bar.offsetMax = new Vector2(-40f, -top);
+
+            var layout = bar.gameObject.AddComponent<HorizontalLayoutGroup>();
+            layout.spacing = 4f;
+            layout.childControlWidth = true;
+            layout.childControlHeight = true;
+            layout.childForceExpandWidth = true;
+            layout.childForceExpandHeight = true;
+
+            for (int i = 0; i < labels.Length; i++)
+            {
+                int index = i;
+                bool isActive = i == active;
+
+                RectTransform tab = NewRect("Tab", bar);
+
+                // Transparent hit area; the underline carries the selected state.
+                Image background = tab.gameObject.AddComponent<Image>();
+                background.color = new Color(1f, 1f, 1f, 0.001f);
+
+                Button button = tab.gameObject.AddComponent<Button>();
+                button.targetGraphic = background;
+                button.onClick.AddListener(() => onSelect?.Invoke(index));
+
+                RectTransform textRect = NewRect("Text", tab);
+                textRect.anchorMin = Vector2.zero;
+                textRect.anchorMax = Vector2.one;
+                textRect.offsetMin = Vector2.zero;
+                textRect.offsetMax = new Vector2(0f, -6f);
+
+                var label = textRect.gameObject.AddComponent<TextMeshProUGUI>();
+                if (_font != null)
+                {
+                    label.font = _font;
+                }
+
+                label.text = labels[i];
+                label.fontSize = isActive ? 22f : 20f;
+                label.color = isActive ? BodyColour : new Color(0.62f, 0.66f, 0.72f, 1f);
+                label.alignment = TextAlignmentOptions.Center;
+                label.enableWordWrapping = false;
+                label.overflowMode = TextOverflowModes.Ellipsis;
+
+                if (!isActive)
+                {
+                    continue;
+                }
+
+                RectTransform underline = NewRect("Underline", tab);
+                underline.anchorMin = new Vector2(0f, 0f);
+                underline.anchorMax = new Vector2(1f, 0f);
+                underline.pivot = new Vector2(0.5f, 0f);
+                underline.offsetMin = new Vector2(12f, 0f);
+                underline.offsetMax = new Vector2(-12f, 3f);
+                Image line = underline.gameObject.AddComponent<Image>();
+                line.color = BodyColour;
+                line.raycastTarget = false;
+            }
+
+            return bar;
         }
 
         internal static void PaintBackground(RectTransform panel)
@@ -253,7 +376,7 @@ namespace BigamstTrainer
             rowElement.minHeight = InputRowHeight;
 
             var field = UnityEngine.Object.Instantiate(source, row);
-            field.gameObject.name = "Input";
+            field.gameObject.name = InputName;
             field.gameObject.SetActive(true);
             field.onValueChanged.RemoveAllListeners();
             field.onSubmit.RemoveAllListeners();
@@ -335,7 +458,7 @@ namespace BigamstTrainer
             rowElement.minHeight = InputRowHeight;
 
             var field = UnityEngine.Object.Instantiate(source, row);
-            field.gameObject.name = "Input";
+            field.gameObject.name = InputName;
             field.gameObject.SetActive(true);
             field.onValueChanged.RemoveAllListeners();
             field.onSubmit.RemoveAllListeners();
@@ -429,14 +552,31 @@ namespace BigamstTrainer
 
         private static TMP_InputField FindInputFieldTemplate()
         {
+            // Unity's null check covers destroyed objects, so a cached template that has
+            // since been torn down is re-resolved rather than used.
+            if (_inputTemplate != null)
+            {
+                return _inputTemplate;
+            }
+
             // Includes inactive objects: most of the game's fields belong to panels that
             // are closed during normal play.
             foreach (TMP_InputField candidate in Resources.FindObjectsOfTypeAll<TMP_InputField>())
             {
-                if (candidate != null && candidate.textComponent != null)
+                if (candidate == null || candidate.textComponent == null)
                 {
-                    return candidate;
+                    continue;
                 }
+
+                // Skip this panel's own clones, which are pending destruction during a
+                // rebuild and would produce an empty row.
+                if (candidate.gameObject.name == InputName)
+                {
+                    continue;
+                }
+
+                _inputTemplate = candidate;
+                return _inputTemplate;
             }
 
             return null;

@@ -77,5 +77,11 @@
   "quick add $100,000  →": "Quick add $100,000",
   "quick add $1,000,000  →": "Quick add $1,000,000",
   "bigamst trainer": "Bigamst Trainer",
-  "spawn": "Spawn"
+  "reset all bigamst trainer settings  →": "Reset all Bigamst Trainer settings",
+  "amount": "Amount",
+  "add the amount above  →": "Add the amount above",
+  "subtract the amount above  →": "Subtract the amount above",
+  "set money to the amount above  →": "Set money to the amount above",
+  "apply tuning to the car you are in  →": "Apply tuning to the car you are in",
+  "utility": "Utility"
 }

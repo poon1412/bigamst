@@ -90,18 +90,26 @@ Keep everyone fully satisfied, clear absences and sick days, max out every skill
 Disable damage and fuel use; repair, refuel and clean everything you own; clear parking
 tickets and fines. Repair or refuel just the car you are sitting in.
 
-**Tuning** for the vehicle you are driving: max speed, engine power, brake force, turn
-radius, and damage taken — set damage to 0% and it stops caring about walls.
+**Tuning** applies to one car at a time — the one you are sitting in. Set max speed, engine
+power, brake force, turn radius and damage taken, then press **Apply tuning to the car you
+are in**. Nothing changes until you press it, so each car keeps its own settings. Damage at
+0% means walls stop mattering.
+
+Some vehicles have no speed limiter or damage module and the game will say so; that is
+normal, not a failure.
 
 ### Gameplay
 Game speed from 0 to 500%. Skip an hour, eight hours or a day. Complete the current
 objective or quest. Spawn customers into the business you are standing in. Toggle traffic,
 pedestrians, seasonal item limits and invincibility.
 
-### Spawn
+### Utility
 *(phone only)* Start typing an item name and pick from the suggestions — search matches the
 readable name, so "bread" finds it without knowing that its id is `ba:itemname_bread`. The
 item appears in your hands, so you need empty hands, no vehicle and no placement mode.
+
+**Reset all settings** lives here too. It clears this mod's saved values so every control
+returns to its default — it does not undo cheats already applied to your save.
 
 ### Rivals
 Adjust rival difficulty, or defeat all rivals outright — which shuts down their businesses
@@ -127,9 +135,6 @@ on one machine — please report anything odd.
   what it does.
 - **Freeze the clock is experimental.** Stopping time is the most invasive thing here and may
   interact badly with deliveries, shifts or rent. Try it on a save you do not mind losing.
-- **Vehicle tuning follows you, not the car.** The sliders apply to whichever vehicle you are
-  in when they run, and they re-apply when the menu is rebuilt — so a second car can pick up
-  the first one's settings.
 - **The phone app depends on internals.** It borrows the game's own option controls and app
   button, which a future patch could rename. If the Trainer app stops appearing, everything
   is still available under Options → MODS, and the log will say what it could not find.

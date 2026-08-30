@@ -116,7 +116,11 @@ namespace BigamstTrainer
         /// Spawns every option into <paramref name="parent"/>. Returns how many controls
         /// were created, or -1 if the game's prefabs could not be found.
         /// </summary>
-        internal static int Render(Transform parent, ModOptions options, string modId)
+        internal static int Render(Transform parent, ModOptions options, string modId) =>
+            Render(parent, options?.Options, modId);
+
+        /// <summary>Renders a chosen subset, so a single tab can be drawn on its own.</summary>
+        internal static int Render(Transform parent, IEnumerable<ModOption> options, string modId)
         {
             Dictionary<string, GameObject> prefabs = ResolvePrefabs();
             if (prefabs == null || options == null)
@@ -125,8 +129,15 @@ namespace BigamstTrainer
             }
 
             int created = 0;
-            foreach (ModOption option in options.Options)
+            foreach (ModOption option in options)
             {
+                if (TrainerMod.MenuOnlyOptions.Contains(option))
+                {
+                    // Belongs to the Options screen only; the phone has its own control
+                    // for the same job.
+                    continue;
+                }
+
                 if (option is InlineUiOption inline)
                 {
                     // Phone-only controls, positioned by where they sit in the list.
