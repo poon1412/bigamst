@@ -83,5 +83,8 @@
   "subtract the amount above  →": "Subtract the amount above",
   "set money to the amount above  →": "Set money to the amount above",
   "apply tuning to the car you are in  →": "Apply tuning to the car you are in",
-  "utility": "Utility"
+  "utility": "Utility",
+  "complete all personal goals  →": "Complete all personal goals",
+  "clear completed personal goals  →": "Clear completed personal goals",
+  "forget all saved spots  →": "Forget all saved spots"
 }

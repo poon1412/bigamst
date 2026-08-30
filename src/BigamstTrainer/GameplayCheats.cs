@@ -216,6 +216,106 @@ namespace BigamstTrainer
             return results;
         }
 
+        // ---- Personal goals ------------------------------------------------------
+
+        internal static void CompleteAllPersonalGoals() =>
+            Run("Completed all personal goals",
+                UI.Smartphone.Apps.Persona.PersonalGoalsUI.Command_CompleteAll);
+
+        internal static void ResetPersonalGoals() =>
+            Run("Cleared all completed personal goals",
+                UI.Smartphone.Apps.Persona.PersonalGoalsUI.Command_Reset);
+
+        // ---- Waypoints -----------------------------------------------------------
+        //
+        // Stored by the game in PlayerPrefs under "tpwWaypoints", as
+        // "name|x,y,z" entries joined by ';'. Reading it directly is what lets the
+        // panel offer the saved names instead of asking you to remember them.
+
+        private const string WaypointsKey = "tpwWaypoints";
+
+        internal static void AddWaypoint(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                _log?.Warn("Give the waypoint a name first.");
+                return;
+            }
+
+            Run($"Saved waypoint '{name.Trim().ToLowerInvariant()}' at your position",
+                () => GameManager.Command_AddWaypoint(name.Trim()));
+        }
+
+        internal static void TeleportToWaypoint(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                _log?.Warn("Pick a waypoint first.");
+                return;
+            }
+
+            Run($"Teleported to waypoint '{name.Trim()}'",
+                () => GameManager.Command_TeleportPlayerToWaypoint(name.Trim()));
+        }
+
+        internal static void RemoveWaypoint(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return;
+            }
+
+            Run($"Removed waypoint '{name.Trim()}'",
+                () => GameManager.Command_RemoveWaypoint(name.Trim()));
+        }
+
+        internal static void ClearWaypoints() =>
+            Run("Cleared all waypoints", GameManager.Command_ClearWaypoints);
+
+        /// <summary>Saved waypoint names matching a query, for the suggestion list.</summary>
+        internal static List<(string Id, string Display)> SearchWaypoints(string query, int limit)
+        {
+            var results = new List<(string, string)>();
+
+            try
+            {
+                string raw = UnityEngine.PlayerPrefs.GetString(WaypointsKey, string.Empty);
+                if (string.IsNullOrEmpty(raw))
+                {
+                    return results;
+                }
+
+                query = (query ?? string.Empty).Trim();
+                foreach (string entry in raw.Split(';'))
+                {
+                    int bar = entry.IndexOf('|');
+                    if (bar <= 0)
+                    {
+                        continue;
+                    }
+
+                    string name = entry.Substring(0, bar);
+                    if (query.Length > 0 &&
+                        name.IndexOf(query, StringComparison.OrdinalIgnoreCase) < 0)
+                    {
+                        continue;
+                    }
+
+                    results.Add((name, name));
+                    if (results.Count >= limit)
+                    {
+                        break;
+                    }
+                }
+            }
+            catch (Exception exception)
+            {
+                _log?.Warn($"Could not read waypoints: {exception.Message}");
+            }
+
+            return results;
+        }
+
         // ---- Money ---------------------------------------------------------------
 
         /// <summary>

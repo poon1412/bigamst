@@ -375,6 +375,23 @@ namespace BigamstTrainer
             }
         }
 
+        /// <summary>Saving, and returning to, named positions.</summary>
+        internal static void BuildWaypoints(Transform parent)
+        {
+            bool saved = PhoneUi.CreateInputRow(parent, "Save this spot as", "e.g. home",
+                ("Save", GameplayCheats.AddWaypoint));
+
+            bool go = PhoneUi.CreateSearchRow(
+                parent, "Go to a saved spot", "start typing, or leave blank", "Go",
+                query => GameplayCheats.SearchWaypoints(query, limit: 8),
+                GameplayCheats.TeleportToWaypoint);
+
+            if (!saved || !go)
+            {
+                _log?.Warn("No text field could be cloned; the waypoint rows were skipped.");
+            }
+        }
+
         /// <summary>Item name with live suggestions, spawning into the player's hands.</summary>
         internal static void BuildItemSpawner(Transform parent)
         {

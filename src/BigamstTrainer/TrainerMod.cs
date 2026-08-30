@@ -231,6 +231,8 @@ namespace BigamstTrainer
                 .AddButton("Restore energy, hunger and happiness  →", RestoreAllStats)
                 .AddButton("Unlock all courses  →", GameplayCheats.UnlockAllCourses)
                 .AddButton("Get 1 year younger  →", () => GameplayCheats.ChangeAge(-1f))
+                .AddButton("Complete all personal goals  →", GameplayCheats.CompleteAllPersonalGoals)
+                .AddButton("Clear completed personal goals  →", GameplayCheats.ResetPersonalGoals)
 
                 .AddSplitter()
                 .AddHeader("Businesses")
@@ -305,6 +307,9 @@ namespace BigamstTrainer
                 .AddButton("Go inside map destination  →", TeleportCheats.InsideDestination)
                 .AddButton("Go to quest target  →", TeleportCheats.ToQuestTarget)
                 .AddButton("Go to the casino  →", GameplayCheats.GoToCasino)
+                // Phone only: naming and choosing a waypoint both need text entry.
+                .AddCustom(new InlineUiOption(PhoneApp.BuildWaypoints))
+                .AddButton("Forget all saved spots  →", GameplayCheats.ClearWaypoints)
 
                 .AddSplitter()
                 .AddHeader("Utility")

@@ -17,9 +17,12 @@ namespace BigamstTrainer
     internal static class PhoneUi
     {
         private static readonly Color PanelBackground = new Color(0.11f, 0.13f, 0.16f, 0.94f);
-        private static readonly Color ButtonNormal    = new Color(0.20f, 0.24f, 0.30f, 1f);
-        private static readonly Color ButtonHover     = new Color(0.26f, 0.33f, 0.42f, 1f);
-        private static readonly Color ButtonPressed   = new Color(0.16f, 0.20f, 0.26f, 1f);
+        // Matched to the game's APPLY buttons so the rows built here do not read as
+        // foreign next to the option controls spawned from its prefabs.
+        private static readonly Color ButtonNormal    = new Color(0.22f, 0.55f, 0.90f, 1f);
+        private static readonly Color ButtonHover     = new Color(0.30f, 0.64f, 0.98f, 1f);
+        private static readonly Color ButtonPressed   = new Color(0.16f, 0.42f, 0.72f, 1f);
+        private static readonly Color SuggestionColour = new Color(0.20f, 0.24f, 0.30f, 1f);
         private static readonly Color HeadingColour   = new Color(0.62f, 0.78f, 1f, 1f);
         private static readonly Color BodyColour      = new Color(0.92f, 0.94f, 0.96f, 1f);
         private static readonly Color CardBackground  = new Color(0.14f, 0.16f, 0.20f, 0.55f);
@@ -306,10 +309,11 @@ namespace BigamstTrainer
                 label.font = _font;
             }
 
-            label.text = text;
-            label.fontSize = 20f;
-            label.color = BodyColour;
-            label.alignment = TextAlignmentOptions.MidlineLeft;
+            label.text = text.ToUpperInvariant();
+            label.fontSize = 19f;
+            label.color = Color.white;
+            label.fontStyle = FontStyles.Bold;
+            label.alignment = TextAlignmentOptions.Center;
             label.enableWordWrapping = false;
             label.overflowMode = TextOverflowModes.Ellipsis;
 
@@ -540,9 +544,23 @@ namespace BigamstTrainer
                     LayoutElement element = option.GetComponent<LayoutElement>();
                     element.preferredHeight = RowHeight;
                     element.minHeight = RowHeight;
+
+                    Image background = option.GetComponent<Image>();
+                    background.color = SuggestionColour;
+                    ColorBlock muted = option.colors;
+                    muted.normalColor = SuggestionColour;
+                    muted.highlightedColor = new Color(0.26f, 0.31f, 0.38f, 1f);
+                    muted.pressedColor = new Color(0.16f, 0.19f, 0.24f, 1f);
+                    muted.selectedColor = SuggestionColour;
+                    option.colors = muted;
+
                     foreach (TMP_Text text in option.GetComponentsInChildren<TMP_Text>())
                     {
                         text.fontSize = 18f;
+                        text.fontStyle = FontStyles.Normal;
+                        text.color = BodyColour;
+                        text.alignment = TextAlignmentOptions.MidlineLeft;
+                        text.text = caption + "   (" + chosen + ")";
                     }
                 }
             });
