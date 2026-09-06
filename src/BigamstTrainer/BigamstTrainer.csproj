@@ -11,7 +11,7 @@
     <AssemblyName>BigamstTrainer</AssemblyName>
     <RootNamespace>BigamstTrainer</RootNamespace>
     <LangVersion>latest</LangVersion>
-    <Version>0.10.2</Version>
+    <Version>1.0.0</Version>
 
     <!-- The mod loader rejects a mod folder containing more than one DLL,
          so nothing may be copied alongside our assembly. -->
@@ -64,6 +64,11 @@
     <Reference Include="HGPlugins"            HintPath="$(ManagedDir)\HGPlugins.dll"            Private="false" />
     <!-- ModOptionsButtonControl, for relabelling the game's placeholder button text. -->
     <Reference Include="BigAmbitions.ModsInternal" HintPath="$(ManagedDir)\BigAmbitions.ModsInternal.dll" Private="false" />
+    <!-- NWH.VehiclePhysics2.VehicleController: engine, brakes and steering, so car
+         tuning can read the car's own values instead of only overwriting them. -->
+    <Reference Include="ExternalPlugins" HintPath="$(ManagedDir)\ExternalPlugins.dll" Private="false" />
+    <!-- Physics.Raycast, to ask whether there is ground under a vehicle teleport. -->
+    <Reference Include="UnityEngine.PhysicsModule" HintPath="$(ManagedDir)\UnityEngine.PhysicsModule.dll" Private="false" />
     <Reference Include="UnityEngine.UI"       HintPath="$(ManagedDir)\UnityEngine.UI.dll"       Private="false" />
     <Reference Include="Unity.TextMeshPro"    HintPath="$(ManagedDir)\Unity.TextMeshPro.dll"    Private="false" />
     <Reference Include="UnityEngine.UIModule" HintPath="$(ManagedDir)\UnityEngine.UIModule.dll" Private="false" />

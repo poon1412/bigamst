@@ -669,6 +669,23 @@ namespace BigamstTrainer
 
 
         /// <summary>
+        /// Rebuilds the panel if it is on screen, so controls pick up values changed from
+        /// outside them.
+        ///
+        /// A control only reads its stored value in Initialize, so writing a new value
+        /// leaves an already-drawn slider sitting where it was. Anything that moves a
+        /// slider on the player's behalf — undoing tuning, getting into a different car —
+        /// has to ask for this or the panel quietly disagrees with the game.
+        /// </summary>
+        internal static void RefreshIfOpen()
+        {
+            if (_panel != null && _panel.activeInHierarchy)
+            {
+                RebuildContent();
+            }
+        }
+
+        /// <summary>
         /// Mirrors FullMenu.SelectApp: hide every sibling app panel, then show ours.
         /// Also updates the menu title and button highlight, which the game would
         /// normally do and which otherwise keep showing the previously opened app.

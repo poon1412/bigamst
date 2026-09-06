@@ -61,7 +61,7 @@ namespace BigamstTrainer
 
                 if (PlayerHelper.IsUsingVehicle)
                 {
-                    TeleportWithVehicle(target, destination);
+                    TeleportWithVehicle(target, Describe(destination));
                     return;
                 }
 
@@ -76,24 +76,60 @@ namespace BigamstTrainer
         }
 
         /// <summary>
-        /// Moves the car, which carries the player with it. TeleportVehicleToGround
-        /// raycasts for real ground and aligns to the surface, and the TeleportVehicle it
-        /// calls resets velocity, wheel simulation, engine RPM and the parking spots —
-        /// none of which is safe to skip.
+        /// Moves the car, which carries the player with it. Returns false without moving
+        /// anything if the destination is not somewhere a car can be put.
+        ///
+        /// TeleportVehicleToGround raycasts for real ground and aligns to the surface, and
+        /// the TeleportVehicle it calls resets velocity, wheel simulation, engine RPM and
+        /// the parking spots — none of which is safe to skip.
         /// </summary>
-        private static void TeleportWithVehicle(Vector3 target, Address destination)
+        private static bool TeleportWithVehicle(Vector3 target, string what)
         {
             VehicleController vehicle = InstanceBehavior<GameManager>.Instance?.selectedVehicle;
             if (vehicle == null)
             {
                 _log?.Warn("Driving, but no current vehicle was found.");
-                return;
+                return false;
+            }
+
+            // TeleportVehicleToGround looks for ground within 2.5m and, finding none,
+            // logs an error and drops the car at the raw position anyway — which loses it
+            // through the floor. Ask the same question first and refuse instead.
+            if (!HasGroundFor(target))
+            {
+                _log?.Warn($"No road or ground at the {what}, so the car was left where it is. " +
+                           "Get out and teleport on foot.");
+                return false;
             }
 
             // Keep the car's current facing; there is no sensible heading to infer from
             // an entrance position alone.
             VehicleHelper.TeleportVehicleToGround(vehicle, target, vehicle.transform.rotation);
-            _log?.Info($"Teleported with vehicle to {Describe(destination)}.");
+
+            // The game clears whatever is parked in a spot before putting a vehicle there.
+            // Teleporting bypasses that, so cars end up standing inside each other.
+            try
+            {
+                VehicleHelper.DestroyBlockingVehicles(vehicle.gameObject, vehicle.vehicleType,
+                                                      onlyParkedVehicles: true);
+            }
+            catch (Exception exception)
+            {
+                _log?.Warn($"Could not clear parked vehicles at the destination: {exception.Message}");
+            }
+
+            _log?.Info($"Teleported with vehicle to the {what}.");
+            return true;
+        }
+
+        /// <summary>
+        /// Whether there is ground under a position, asked exactly the way the game asks
+        /// it inside TeleportVehicleToGround so the answer matches what it will do.
+        /// </summary>
+        private static bool HasGroundFor(Vector3 target)
+        {
+            return Physics.Raycast(target + Vector3.up * 2f, Vector3.down, 2.5f,
+                                   LayerHelper.groundLayerMask, QueryTriggerInteraction.Ignore);
         }
 
         /// <summary>
@@ -198,15 +234,7 @@ namespace BigamstTrainer
 
             if (PlayerHelper.IsUsingVehicle)
             {
-                VehicleController vehicle = InstanceBehavior<GameManager>.Instance?.selectedVehicle;
-                if (vehicle == null)
-                {
-                    _log?.Warn("Driving, but no current vehicle was found.");
-                    return;
-                }
-
-                VehicleHelper.TeleportVehicleToGround(vehicle, target, vehicle.transform.rotation);
-                _log?.Info($"Teleported with vehicle to the {what}.");
+                TeleportWithVehicle(target, what);
                 return;
             }
 

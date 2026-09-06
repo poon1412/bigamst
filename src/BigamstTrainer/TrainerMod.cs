@@ -20,6 +20,11 @@ namespace BigamstTrainer
     {
         // Option ids become PlayerPrefs keys "m:{modId}:{optionId}". They must stay stable
         // across releases or previously saved values are silently dropped.
+        //
+        // The five tuning ids gained a _pct suffix when those sliders stopped being
+        // absolute figures and became percentages of the car's own values. Dropping the
+        // old values is the point: a saved brake force of 196 would otherwise come back
+        // as 196% of stock.
         private const string OptMoneyAmount     = "bigamst.money.amount";
         private const string OptMoneyFloor      = "bigamst.money.floor";
         private const string OptTaxPercent      = "bigamst.econ.tax";
@@ -36,6 +41,8 @@ namespace BigamstTrainer
         private const string OptKeepHappiness   = "bigamst.player.keep_happiness";
         private const string OptNoAging         = "bigamst.player.no_aging";
         private const string OptNoEnergyDrain   = "bigamst.player.no_energy";
+        private const string OptMoveSpeed       = "bigamst.player.move_speed";
+        private const string OptApplyOnLoad     = "bigamst.general.apply_on_load";
         private const string OptAutoRestock     = "bigamst.business.auto_restock";
         private const string OptAutoClean       = "bigamst.business.auto_clean";
         private const string OptFreeRent        = "bigamst.business.free_rent";
@@ -44,11 +51,11 @@ namespace BigamstTrainer
         private const string OptNoVehicleFuel   = "bigamst.vehicle.no_fuel";
         private const string OptRivalDifficulty = "bigamst.rivals.difficulty";
         private const string OptGameSpeed       = "bigamst.gameplay.speed";
-        private const string OptCarSpeed        = "bigamst.vehicle.max_speed";
-        private const string OptCarPower        = "bigamst.vehicle.engine_power";
-        private const string OptCarBrakes       = "bigamst.vehicle.brake_force";
-        private const string OptCarTurn         = "bigamst.vehicle.turn_radius";
-        private const string OptCarDamage       = "bigamst.vehicle.damage_intensity";
+        private const string OptCarSpeed        = "bigamst.vehicle.max_speed_pct";
+        private const string OptCarPower        = "bigamst.vehicle.engine_power_pct";
+        private const string OptCarBrakes       = "bigamst.vehicle.brake_force_pct";
+        private const string OptCarTurn         = "bigamst.vehicle.steer_angle_pct";
+        private const string OptCarDamage       = "bigamst.vehicle.damage_pct";
         private const string OptFreezeClock     = "bigamst.time.freeze";
         private const string OptSetHour         = "bigamst.time.hour";
 
@@ -157,6 +164,11 @@ namespace BigamstTrainer
         private float _staffSweepTimer;
         private float _businessSweepTimer;
         private bool _tickSubscribed;
+        private bool _applyOnLoad = true;
+        private string _lastVehicleId;
+        private const float PendingTuningTimeoutSeconds = 30f;
+        private int[] _pendingTuning;
+        private float _pendingTuningSeconds;
 
         public override Task OnLoadAsync(ModContext context)
         {
@@ -245,6 +257,11 @@ namespace BigamstTrainer
                     value => WithVariables("Disable aging", value, v => v.disableAging = value))
                 .AddToggle(OptNoEnergyDrain, "Disable energy system entirely", false,
                     value => WithVariables("Disable energy system", value, v => v.disableEnergy = value))
+                // 50-300 rather than 10-500: on a slider this wide every step was about a
+                // pixel, so landing back on 100% by dragging was almost impossible.
+                .AddSlider(OptMoveSpeed, "Movement speed", 50, 300, 100,
+                    GameplayCheats.SetMovementSpeed, LabelPercent)
+                .AddButton("Movement speed back to normal  →", ResetMovementSpeed)
                 .AddButton("Restore energy, hunger and happiness  →", RestoreAllStats)
                 .AddButton("Unlock all courses  →", GameplayCheats.UnlockAllCourses)
                 .AddButton("Unlock all contacts  →", GameplayCheats.UnlockAllContacts)
@@ -289,12 +306,17 @@ namespace BigamstTrainer
                 // These only record a target. Applying on change would re-fire whenever the
                 // panel is rebuilt, so getting into a second car and opening the menu would
                 // silently give it the first car's tuning.
-                .AddSlider(OptCarSpeed, "Tune: max speed", 0, 400, 160, v => _carSpeed = v)
-                .AddSlider(OptCarPower, "Tune: engine power", 0, 1000, 200, v => _carPower = v)
-                .AddSlider(OptCarBrakes, "Tune: brake force", 0, 1000, 200, v => _carBrakes = v)
-                .AddSlider(OptCarTurn, "Tune: turn radius", 1, 90, 35, v => _carTurn = v)
-                .AddSlider(OptCarDamage, "Tune: damage taken", 0, 100, 100, v => _carDamage = v, LabelPercent)
+                // All five are percentages of what the car itself came with, so 100% is
+                // stock for every vehicle and there is no way to ask for thirty times an
+                // engine by accident.
+                .AddSlider(OptCarSpeed, "Tune: max speed", 10, 300, 100, v => _carSpeed = v, LabelPercent)
+                .AddSlider(OptCarPower, "Tune: engine power", 10, 300, 100, v => _carPower = v, LabelPercent)
+                .AddSlider(OptCarBrakes, "Tune: brake force", 10, 300, 100, v => _carBrakes = v, LabelPercent)
+                .AddSlider(OptCarTurn, "Tune: steering angle", 25, 200, 100, v => _carTurn = v, LabelPercent)
+                .AddSlider(OptCarDamage, "Tune: damage taken", 0, 300, 100, v => _carDamage = v, LabelPercent)
+                .AddButton("Show this car's current tuning  →", GameplayCheats.ReportCarTuning)
                 .AddButton("Apply tuning to the car you are in  →", ApplyCarTuning)
+                .AddButton("Undo tuning on the car you are in  →", UndoCarTuning)
 
                 .AddSplitter()
                 .AddHeader("Rivals")
@@ -331,6 +353,10 @@ namespace BigamstTrainer
                 .AddSplitter()
                 .AddHeader("Utility")
                 .AddCustom(new InlineUiOption(PhoneApp.BuildItemSpawner))
+                // Stores only. Read straight from PlayerPrefs by ApplySavedSettings
+                // before any other setting is looked at.
+                .AddToggle(OptApplyOnLoad, "Apply my settings when the game loads", true,
+                    v => { _applyOnLoad = v; LogSetting("Apply settings on load", v); })
                 .AddButton("Reset all Bigamst Trainer settings  →", ResetSettings)
 
                 // Renders nothing. Must stay last: its SpawnUi is the signal that the
@@ -341,11 +367,141 @@ namespace BigamstTrainer
             ModId = context.ModId;
             OptionsService.Register(context.ModId, options);
 
+            ApplySavedSettings(options, context.ModId);
+
+            // Always, saved settings or not: car tuning cannot outlive a city load.
+            ResetTuningSliders();
+
             UnityLifecycleProvider.OnUpdate += OnUpdate;
             _tickSubscribed = true;
 
             _log.Info("Bigamst Trainer loaded.");
             return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Puts last session's saved settings into force at load.
+        ///
+        /// The game only invokes an option's callback when a control for that option is
+        /// built, and it restores the stored value with SetIsOnWithoutNotify. So until the
+        /// player opened Options or the phone, every setting saved last session was shown
+        /// as on while doing nothing at all — the box was reporting what was saved, not
+        /// what was active. Read the same PlayerPrefs keys the game reads and invoke the
+        /// same callbacks, so the two always agree.
+        ///
+        /// Invoking a callback here is safe precisely because the panel does the same on
+        /// every rebuild: any handler that could not survive being called twice would
+        /// already be broken.
+        /// </summary>
+        private void ApplySavedSettings(ModOptions options, string modId)
+        {
+            // Opting out is itself a saved setting, so it has to be read the same way,
+            // before anything else is considered.
+            if (UnityEngine.PlayerPrefs.GetInt($"m:{modId}:{OptApplyOnLoad}", 1) == 0)
+            {
+                ForgetSavedSettings(options, modId);
+                return;
+            }
+
+            int applied = 0;
+
+            foreach (ModOption option in options.Options)
+            {
+                if (string.IsNullOrEmpty(option.Id) || option.Id == OptApplyOnLoad ||
+                    IsTuningOption(option.Id))
+                {
+                    continue;
+                }
+
+                // Same key the game builds in ModOptionPrefs, which is internal to it.
+                string key = $"m:{modId}:{option.Id}";
+
+                try
+                {
+                    switch (option)
+                    {
+                        case ToggleOption toggle:
+                            bool on = UnityEngine.PlayerPrefs.GetInt(key, toggle.DefaultValue ? 1 : 0) != 0;
+                            if (on != toggle.DefaultValue)
+                            {
+                                toggle.OnValueChanged?.Invoke(on);
+                                applied++;
+                            }
+                            break;
+
+                        case SliderOption slider:
+                            int value = UnityEngine.PlayerPrefs.GetInt(key, slider.DefaultValue);
+                            if (value != slider.DefaultValue)
+                            {
+                                slider.OnValueChanged?.Invoke(value);
+                                applied++;
+                            }
+                            break;
+
+                        case DropdownOption dropdown:
+                            int index = UnityEngine.PlayerPrefs.GetInt(key, dropdown.DefaultIndex);
+                            if (index != dropdown.DefaultIndex)
+                            {
+                                dropdown.OnValueChanged?.Invoke(index);
+                                applied++;
+                            }
+                            break;
+                    }
+                }
+                catch (System.Exception exception)
+                {
+                    _log?.Warn($"Could not restore '{option.Id}': {exception.Message}");
+                }
+            }
+
+            if (applied > 0)
+            {
+                _log?.Info($"Restored {applied} saved setting(s).");
+            }
+        }
+
+        /// <summary>
+        /// Clears every saved value so a session that does not apply them also does not
+        /// display them.
+        ///
+        /// The game reads each control's stored value straight back into the UI, so
+        /// leaving the values in place while refusing to act on them would show ticked
+        /// boxes for cheats that are not running — the same lie, in the other direction,
+        /// as the bug this whole mechanism exists to fix. "Do not apply on load" therefore
+        /// means a genuinely clean start: nothing set, nothing shown as set.
+        /// </summary>
+        private void ForgetSavedSettings(ModOptions options, string modId)
+        {
+            int cleared = 0;
+
+            foreach (ModOption option in options.Options)
+            {
+                // The opt-out itself has to survive, or it would switch itself back on.
+                if (string.IsNullOrEmpty(option.Id) || option.Id == OptApplyOnLoad)
+                {
+                    continue;
+                }
+
+                if (!(option is ToggleOption || option is SliderOption || option is DropdownOption))
+                {
+                    continue;
+                }
+
+                string key = $"m:{modId}:{option.Id}";
+                if (UnityEngine.PlayerPrefs.HasKey(key))
+                {
+                    UnityEngine.PlayerPrefs.DeleteKey(key);
+                    cleared++;
+                }
+            }
+
+            if (cleared > 0)
+            {
+                UnityEngine.PlayerPrefs.Save();
+            }
+
+            _log?.Info($"Starting clean: \"Apply my settings when the game loads\" is off, " +
+                       $"so {cleared} saved setting(s) were cleared back to their defaults.");
         }
 
         public override Task OnUnloadAsync()
@@ -380,6 +536,22 @@ namespace BigamstTrainer
 
             // One bool check once the phone app is installed.
             PhoneApp.Tick();
+
+            // One int comparison once the requested speed has taken effect.
+            GameplayCheats.EnsureMovementSpeed();
+
+            // One string comparison a frame, so tuning can follow the car you get into.
+            string vehicleId = SaveGameManager.Current?.ActiveVehicleId;
+            if (vehicleId != _lastVehicleId)
+            {
+                _lastVehicleId = vehicleId;
+                OnEnteredVehicle(vehicleId);
+            }
+
+            if (_pendingTuning != null)
+            {
+                RetryPendingTuning();
+            }
 
             GameInstance game = SaveGameManager.Current;
             if (game == null)
@@ -594,13 +766,217 @@ namespace BigamstTrainer
         /// commands each report "You need to be inside a vehicle" themselves, and some
         /// vehicles legitimately lack the speed limiter or damage modules.
         /// </summary>
+        /// <summary>
+        /// Restores a car's tuning when the player gets into it, and points the sliders at
+        /// whatever that car is currently set to.
+        ///
+        /// Tuning lives on the spawned car and nothing about it reaches the save file, so
+        /// without this every car is stock again after a city load. Percentages make
+        /// reapplying safe: a fresh car is stock, so "138% of stock" lands on the same
+        /// figure every time rather than compounding.
+        /// </summary>
+        private void OnEnteredVehicle(string vehicleId)
+        {
+            _pendingTuning = null;
+
+            if (string.IsNullOrEmpty(vehicleId))
+            {
+                return;
+            }
+
+            int[] tuning = LoadVehicleTuning(vehicleId);
+            if (tuning == null)
+            {
+                // An untuned car: the sliders should say so rather than describing the
+                // last car the player was in.
+                ResetTuningSliders();
+                PhoneApp.RefreshIfOpen();
+                return;
+            }
+
+            _carSpeed = StoreSlider(OptCarSpeed, tuning[0]);
+            _carPower = StoreSlider(OptCarPower, tuning[1]);
+            _carBrakes = StoreSlider(OptCarBrakes, tuning[2]);
+            _carTurn = StoreSlider(OptCarTurn, tuning[3]);
+            _carDamage = StoreSlider(OptCarDamage, tuning[4]);
+            UnityEngine.PlayerPrefs.Save();
+            PhoneApp.RefreshIfOpen();
+
+            if (!_applyOnLoad)
+            {
+                _log?.Info("This car has saved tuning, left unapplied because " +
+                           "\"Apply my settings when the game loads\" is off.");
+                return;
+            }
+
+            // Not applied here: on a city load the player can already be in a car that the
+            // game has not spawned yet, and tuning something that does not exist fails.
+            _pendingTuning = tuning;
+            _pendingTuningSeconds = 0f;
+        }
+
+        /// <summary>
+        /// Keeps trying to restore a car's tuning until the car exists.
+        ///
+        /// Vehicles are spawned some frames after a city finishes loading, so the tuning
+        /// for the car the player is sitting in cannot be applied at the moment the save
+        /// comes up. Retrying quietly avoids both losing the tuning and telling the player
+        /// to get into a car they are already driving.
+        /// </summary>
+        private void RetryPendingTuning()
+        {
+            _pendingTuningSeconds += Time.unscaledDeltaTime;
+
+            if (GameplayCheats.ApplyTuningPercent(_pendingTuning[0], _pendingTuning[1],
+                                                  _pendingTuning[2], _pendingTuning[3],
+                                                  _pendingTuning[4], quiet: true))
+            {
+                _log?.Info("Restored this car's saved tuning.");
+                _pendingTuning = null;
+                return;
+            }
+
+            if (_pendingTuningSeconds > PendingTuningTimeoutSeconds)
+            {
+                _log?.Warn("Gave up restoring this car's saved tuning: the car never " +
+                           "became available.");
+                _pendingTuning = null;
+            }
+        }
+
+        /// <summary>Where a car's tuning is kept. Our own key, not the game's save.</summary>
+        private string VehicleTuningKey(string vehicleId) => $"m:{ModId}:tune:{vehicleId}";
+
+        private void SaveVehicleTuning(string vehicleId)
+        {
+            if (string.IsNullOrEmpty(vehicleId))
+            {
+                return;
+            }
+
+            string value = $"{_carSpeed};{_carPower};{_carBrakes};{_carTurn};{_carDamage}";
+            UnityEngine.PlayerPrefs.SetString(VehicleTuningKey(vehicleId), value);
+            UnityEngine.PlayerPrefs.Save();
+        }
+
+        private void ForgetVehicleTuning(string vehicleId)
+        {
+            if (!string.IsNullOrEmpty(vehicleId))
+            {
+                UnityEngine.PlayerPrefs.DeleteKey(VehicleTuningKey(vehicleId));
+                UnityEngine.PlayerPrefs.Save();
+            }
+        }
+
+        private int[] LoadVehicleTuning(string vehicleId)
+        {
+            string value = UnityEngine.PlayerPrefs.GetString(VehicleTuningKey(vehicleId), null);
+            if (string.IsNullOrEmpty(value))
+            {
+                return null;
+            }
+
+            string[] parts = value.Split(';');
+            if (parts.Length != 5)
+            {
+                return null;
+            }
+
+            int[] tuning = new int[5];
+            for (int index = 0; index < 5; index++)
+            {
+                if (!int.TryParse(parts[index], out tuning[index]))
+                {
+                    return null;
+                }
+            }
+
+            return tuning;
+        }
+
+        /// <summary>The five sliders that describe car tuning.</summary>
+        private static bool IsTuningOption(string optionId)
+        {
+            return optionId == OptCarSpeed || optionId == OptCarPower ||
+                   optionId == OptCarBrakes || optionId == OptCarTurn ||
+                   optionId == OptCarDamage;
+        }
+
+        /// <summary>
+        /// Returns the tuning sliders to 100%, which is what the cars themselves are.
+        ///
+        /// Tuning is written onto the spawned car and nowhere else — VehicleInstance saves
+        /// position, colour and cargo, but nothing about the engine — so every car is back
+        /// to stock as soon as a city loads. Sliders left showing last session's 218% would
+        /// therefore describe a car that does not exist, and Undo would rightly report
+        /// there was nothing to undo.
+        /// </summary>
+        private void ResetTuningSliders()
+        {
+            _carSpeed = StoreSlider(OptCarSpeed, 100);
+            _carPower = StoreSlider(OptCarPower, 100);
+            _carBrakes = StoreSlider(OptCarBrakes, 100);
+            _carTurn = StoreSlider(OptCarTurn, 100);
+            _carDamage = StoreSlider(OptCarDamage, 100);
+            UnityEngine.PlayerPrefs.Save();
+        }
+
+        /// <summary>
+        /// Puts the car back to stock and the sliders back to 100% together.
+        ///
+        /// Restoring only the car left the sliders showing the tuning that had just been
+        /// undone, so the next Apply silently put it all back.
+        /// </summary>
+        private void UndoCarTuning()
+        {
+            if (!GameplayCheats.ResetCarTuning())
+            {
+                return;
+            }
+
+            ForgetVehicleTuning(SaveGameManager.Current?.ActiveVehicleId);
+
+            _carSpeed = StoreSlider(OptCarSpeed, 100);
+            _carPower = StoreSlider(OptCarPower, 100);
+            _carBrakes = StoreSlider(OptCarBrakes, 100);
+            _carTurn = StoreSlider(OptCarTurn, 100);
+            _carDamage = StoreSlider(OptCarDamage, 100);
+            UnityEngine.PlayerPrefs.Save();
+
+            // Last, once the new values are stored: the rebuild reads them, so refreshing
+            // any earlier just redraws what was there before.
+            PhoneApp.RefreshIfOpen();
+        }
+
+        /// <summary>Walking speed straight back to normal, without hunting for 100%.</summary>
+        private void ResetMovementSpeed()
+        {
+            StoreSlider(OptMoveSpeed, 100);
+            UnityEngine.PlayerPrefs.Save();
+            GameplayCheats.SetMovementSpeed(100);
+            PhoneApp.RefreshIfOpen();
+        }
+
+        /// <summary>
+        /// Writes a value where the matching slider reads it from, so the control shows it
+        /// the next time the panel is built.
+        /// </summary>
+        private int StoreSlider(string optionId, int value)
+        {
+            UnityEngine.PlayerPrefs.SetInt($"m:{ModId}:{optionId}", value);
+            return value;
+        }
+
+        /// <summary>
+        /// Tunes the car being driven, relative to its own stock figures.
+        /// </summary>
         private void ApplyCarTuning()
         {
-            GameplayCheats.SetMaxSpeed(_carSpeed);
-            GameplayCheats.SetEnginePower(_carPower);
-            GameplayCheats.SetBrakeForce(_carBrakes);
-            GameplayCheats.SetTurnRadius(_carTurn);
-            GameplayCheats.SetDamageIntensity(_carDamage);
+            GameplayCheats.ApplyTuningPercent(_carSpeed, _carPower, _carBrakes,
+                                              _carTurn, _carDamage);
+
+            // Kept so the car is still tuned after a city load, which wipes it otherwise.
+            SaveVehicleTuning(SaveGameManager.Current?.ActiveVehicleId);
         }
 
         private static void AddMoney(float amount)
