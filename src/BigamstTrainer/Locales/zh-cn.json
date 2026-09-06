@@ -61,7 +61,6 @@
   "tune: max speed": "调校：最高速度",
   "tune: engine power": "调校：发动机功率",
   "tune: brake force": "调校：制动力",
-  "tune: turn radius": "调校：转弯半径",
   "tune: damage taken": "调校：承受伤害",
   "money": "资金",
   "economy": "经济",
@@ -86,5 +85,19 @@
   "utility": "实用工具",
   "complete all personal goals  →": "完成所有个人目标",
   "clear completed personal goals  →": "清除已完成的个人目标",
-  "unlock all contacts  →": "解锁所有联系人"
+  "unlock all contacts  →": "解锁所有联系人",
+  "trainer": "修改器",
+  "tune: steering angle": "调校：转向角度",
+  "movement speed": "移动速度",
+  "movement speed back to normal  →": "移动速度恢复正常",
+  "show this car's current tuning  →": "显示当前乘坐车辆的调校",
+  "undo tuning on the car you are in  →": "撤销当前乘坐车辆的调校",
+  "apply my settings when the game loads": "游戏载入时应用我的设置",
+  "bigamst_car_tuning": "{car} — 最高速度 {speed}，发动机功率 {power}，制动力 {brakes}，转向角度 {steer}°，承受伤害 {damage}%",
+  "bigamst_tuning_applied": "已应用 {count} 项调校。保持默认值的滑块不会改动。",
+  "bigamst_tuning_nothing_set": "未应用任何调校 — 所有调校滑块都还是默认值。请先调整一项。",
+  "bigamst_tuning_undone": "{car} 已恢复到调校之前的状态。",
+  "bigamst_nothing_to_undo": "本次游戏中还没有调校过这辆车，因此没有可撤销的内容。",
+  "bigamst_not_in_a_car": "请先上车 — 调校只对你正在驾驶的车辆生效。",
+  "bigamst_no_tuning_modules": "这辆车没有任何可调校的模块。"
 }

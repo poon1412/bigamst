@@ -3,7 +3,7 @@
 A trainer mod for [Big Ambitions](https://store.steampowered.com/app/1331550/Big_Ambitions/),
 built on the game's **own mod API** — no BepInEx, no injectors, no dependency folder.
 
-**Version 1.0.0.** Tested against EA 0.11, Build 3674.
+**Version 1.0.1.** Tested against EA 0.11, Build 3674.
 
 ## Install
 
@@ -192,7 +192,12 @@ report anything odd.
 ## Translating
 
 Copy `Locales/en.json` to `Locales/<locale>.json` and translate the values, leaving the keys
-and any `{value}` placeholders alone. The game loads it automatically.
+and any `{value}` placeholders alone. The game loads it automatically. Name the file the way
+the game names its own, in `Big Ambitions_Data/StreamingAssets/locale` — lowercase, like
+`zh-cn.json`.
+
+Simplified Chinese is included, contributed by [cod919](https://github.com/cod919).
+Corrections and further languages are welcome.
 
 ## Building
 
